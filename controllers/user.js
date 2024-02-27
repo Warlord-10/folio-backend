@@ -39,11 +39,9 @@ async function getUserById(req, res){
         else{
             data = await UserModel.findById(req.params.uid, "-password").populate("projects");
         }
-        return res.status(200).json(
-            data
-        );
+        return res.status(200).json(data);
     } catch (error) {
-        return res.status(500).json({"Error": error});
+        return res.status(500).json(error);
     }
 }
 // Needs authorization

@@ -13,14 +13,12 @@ async function registerUser(req, res){
         const refreshToken = generateRefreshToken(user._id);
 
         // Storing JWT in cookies
-        res.cookie("accessToken", accessToken, {maxAge:60*60*1000, httpOnly:true});
-        res.cookie("refreshToken", refreshToken, {maxAge:60*60*24*1000, httpOnly:true, path: "/auth"});
+        res.cookie("accessToken", accessToken, {maxAge:60*60*1000, httpOnly:true, sameSit:"none", secure: true});
+        res.cookie("refreshToken", refreshToken, {maxAge:60*60*24*1000, httpOnly:true, path:"/auth", sameSit:"none", secure: true});
 
-        return res.status(200).json(
-            user
-        );
+        return res.status(200).json(user);
     } catch (error) {
-        return res.status(500).json({ error: 'User creation failed' });
+        return res.status(500).json('User creation failed');
     }
 }
 
@@ -41,15 +39,13 @@ async function loginUser(req, res){
             res.cookie("accessToken", accessToken, {maxAge:60*60*1000, httpOnly:true});
             res.cookie("refreshToken", refreshToken, {maxAge:60*60*24*1000, httpOnly:true, path: "/auth"});
 
-            return res.status(200).json(
-                user
-            );
+            return res.status(200).json(user);
         }
         else{
-            return res.status(500).json({ error: 'Incorrect Password' });
+            return res.status(500).json('Incorrect Password');
         }
     } catch (error) {
-        return res.status(404).json({ error: 'User Not Found' });
+        return res.status(404).json('User Not Found');
     }
 }
 

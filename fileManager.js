@@ -15,5 +15,12 @@ const createFolder = (relPath) => {
 const removeFolder = (relPath) => {
     fs.rmSync(relPath, { recursive: true, force: true });
 }
+const createFile = (relPath) => {
+    try {
+        fs.writeFile(relPath, "", ()=>{})
+    } catch (error) {
+        
+    }
+}
 
 module.exports = { createFolder, removeFolder }

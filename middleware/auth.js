@@ -9,7 +9,7 @@ function verifyTokenMiddleWare(req, res, next){
         req.user = decoded;
         next();
     } catch (error) {
-        return res.status(405).json({ "error": error });
+        return res.status(405).json(error);
     }
 }
 

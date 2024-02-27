@@ -35,5 +35,5 @@ module.exports = {
       template: "template.html"
     })
   ],
-  mode: "development",
+  mode: "production",
 };

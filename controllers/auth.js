@@ -13,8 +13,8 @@ async function registerUser(req, res){
         const refreshToken = generateRefreshToken(user._id);
 
         // Storing JWT in cookies
-        res.cookie("accessToken", accessToken, {maxAge:60*60*1000, httpOnly:true, sameSit:"none", secure: true});
-        res.cookie("refreshToken", refreshToken, {maxAge:60*60*24*1000, httpOnly:true, path:"/auth", sameSit:"none", secure: true});
+        res.cookie("accessToken", accessToken, {maxAge:60*60*1000, httpOnly:true, sameSit:false, secure: true});
+        res.cookie("refreshToken", refreshToken, {maxAge:60*60*24*1000, httpOnly:true, path:"/auth", sameSit:false, secure: true});
 
         return res.status(200).json(user);
     } catch (error) {

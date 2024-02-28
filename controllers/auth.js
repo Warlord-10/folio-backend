@@ -13,21 +13,23 @@ async function registerUser(req, res){
         const refreshToken = generateRefreshToken(user._id);
 
         // Storing JWT in cookies
-        res.cookie("accessToken", accessToken, {
-            maxAge:60*60*1000, 
-            httpOnly:true, 
-            secure: true,
-            sameSite: "none"
-        });
-        res.cookie("refreshToken", refreshToken, {
-            maxAge:60*60*24*1000, 
-            httpOnly:true, 
-            secure: true,
-            sameSite: "none",
-            path:"/auth", 
-        });
+        // res.cookie("accessToken", accessToken, {
+        //     maxAge:60*60*1000, 
+        //     httpOnly:true, 
+        //     secure: true,
+        //     sameSite: "none"
+        // });
+        // res.cookie("refreshToken", refreshToken, {
+        //     maxAge:60*60*24*1000, 
+        //     httpOnly:true, 
+        //     secure: true,
+        //     sameSite: "none",
+        //     path:"/auth", 
+        // });
 
-        return res.status(200).json(user);
+        return res.status(200).json({
+            user, accessToken, refreshToken
+        });
     } catch (error) {
         return res.status(500).json('User creation failed');
     }
@@ -39,7 +41,6 @@ async function loginUser(req, res){
         const user = await UserModel.findOne(
             {email: req.body.email}
         );
-        // return res.status(500).json({ error: 'User not found' });
         const result = await bcrypt.compare(req.body.password, user.password)
         if(result===true){
             // Generating JWT tokens
@@ -47,21 +48,23 @@ async function loginUser(req, res){
             const refreshToken = generateRefreshToken(user._id);
             
             // Storing JWT in cookies
-            res.cookie("accessToken", accessToken, {
-                maxAge:60*60*1000, 
-                httpOnly:true, 
-                secure: true,
-                sameSite: "none"
+            // res.cookie("accessToken", accessToken, {
+            //     maxAge:60*60*1000, 
+            //     httpOnly:true, 
+            //     secure: true,
+            //     sameSite: "none"
+            // });
+            // res.cookie("refreshToken", refreshToken, {
+            //     maxAge:60*60*24*1000, 
+            //     httpOnly:true, 
+            //     secure: true,
+            //     sameSite: "none",
+            //     path:"/auth", 
+            // });
+            
+            return res.status(200).json({
+                user, accessToken, refreshToken
             });
-            res.cookie("refreshToken", refreshToken, {
-                maxAge:60*60*24*1000, 
-                httpOnly:true, 
-                secure: true,
-                sameSite: "none",
-                path:"/auth", 
-            });
-
-            return res.status(200).json(user);
         }
         else{
             return res.status(500).json('Incorrect Password');

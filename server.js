@@ -51,11 +51,11 @@ const options = {
   cert: fs.readFileSync('/etc/letsencrypt/live/deepanshu.malaysingh.com/fullchain.pem')
 };
 
-https.createServer(options, app).listen(443)
+https.createServer(options, app).listen(3005)
 
-const server = app.listen(process.env.PORT || 3005, ()=>{
-  console.log("server running: " + Date.now());
-})
+// const server = app.listen(process.env.PORT || 3005, ()=>{
+//   console.log("server running: " + Date.now());
+// })
 const host = server.address();
 console.log(host)
 

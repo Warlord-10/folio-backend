@@ -6,6 +6,7 @@ const cookieParser = require('cookie-parser');
 const path = require("path");
 const https = require('https');
 const fs = require('fs');
+require('dotenv').config();
 
 
 const authRoutes = require("./routes/auth.js");
@@ -14,13 +15,9 @@ const projectRoutes = require("./routes/project.js");
 const repoRoutes = require("./routes/repo.js");
 const { startDatabase } = require('./mongodb.js');
 
-require('dotenv').config();
-
 
 // Creating an Express application
 const app = express();  
-
-
 // DB connect
 startDatabase(process.env.DB_URL)
 
@@ -45,19 +42,20 @@ app.use("/repo", repoRoutes);
 app.use("/test", express.static(path.join(__dirname, 'bundles')));
 app.use("/public", express.static(path.join(__dirname, 'public')));
 
-
-const options = {
-  key: fs.readFileSync('/etc/letsencrypt/live/deepanshu.malaysingh.com/privkey.pem'),
-  cert: fs.readFileSync('/etc/letsencrypt/live/deepanshu.malaysingh.com/fullchain.pem')
-};
-
-https.createServer(options, app).listen(3005)
-
-// const server = app.listen(process.env.PORT || 3005, ()=>{
-//   console.log("server running: " + Date.now());
-// })
-const host = server.address();
-console.log(host)
+if(process.env.MODE == "dev"){
+  const server = app.listen(process.env.PORT || 3005, ()=>{
+    console.log("server running: " + Date.now());
+  })
+  const host = server.address();
+  console.log(host)
+}
+else{
+  const options = {
+    key: fs.readFileSync('/etc/letsencrypt/live/deepanshu.malaysingh.com/privkey.pem'),
+    cert: fs.readFileSync('/etc/letsencrypt/live/deepanshu.malaysingh.com/fullchain.pem')
+  };
+  https.createServer(options, app).listen(process.env.PORT || 3005)
+}
 
 module.exports = app;
 

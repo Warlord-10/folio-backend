@@ -16,10 +16,14 @@ async function registerUser(req, res){
         res.cookie("accessToken", accessToken, {
             maxAge:60*60*1000, 
             httpOnly:true, 
+            secure: true,
+            sameSite: "none"
         });
         res.cookie("refreshToken", refreshToken, {
             maxAge:60*60*24*1000, 
             httpOnly:true, 
+            secure: true,
+            sameSite: "none",
             path:"/auth", 
         });
 

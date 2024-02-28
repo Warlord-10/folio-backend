@@ -4,6 +4,8 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const cookieParser = require('cookie-parser');
 const path = require("path");
+const https = require('https');
+const fs = require('fs');
 
 
 const authRoutes = require("./routes/auth.js");
@@ -43,12 +45,19 @@ app.use("/repo", repoRoutes);
 app.use("/test", express.static(path.join(__dirname, 'bundles')));
 app.use("/public", express.static(path.join(__dirname, 'public')));
 
+
+const options = {
+  key: fs.readFileSync('/etc/letsencrypt/live/deepanshu.malaysingh.com/privkey.pem'),
+  cert: fs.readFileSync('/etc/letsencrypt/live/deepanshu.malaysingh.com/fullchain.pem')
+};
+
+https.createServer(options, app).listen(443)
+
 const server = app.listen(process.env.PORT || 3005, ()=>{
   console.log("server running: " + Date.now());
 })
-const host = server.address().address;
-const port = server.address().port;
-console.log(host, port)
+const host = server.address();
+console.log(host)
 
 module.exports = app;
 

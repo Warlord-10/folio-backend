@@ -1,6 +1,6 @@
 const express = require("express");
 const { getAllUser, getUserById, updateUserById, delAllUser, delUserById, getUserProfilePage } = require("../controllers/user");
-const verifyTokenMiddleWare = require("../middleware/auth");
+const {verifyTokenMiddleWare, userAuthorizationMiddleware} = require("../middleware/auth");
 const { avatarUploadMiddleware } = require("../middleware/multer");
 
 
@@ -12,8 +12,8 @@ router.delete("/", delAllUser); // for testing only
 
 router.get("/page/:uid", getUserProfilePage);
 router.get("/s/:uid?", verifyTokenMiddleWare, getUserById);
-router.patch("/s/:uid?", verifyTokenMiddleWare, avatarUploadMiddleware.single('file'), updateUserById);
-router.delete("/s/:uid?", verifyTokenMiddleWare, delUserById);
+router.patch("/s/:uid?", userAuthorizationMiddleware, avatarUploadMiddleware.single('file'), updateUserById);
+router.delete("/s/:uid?", userAuthorizationMiddleware, delUserById);
 
 
 

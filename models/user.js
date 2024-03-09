@@ -31,7 +31,7 @@ const userSchema = new mongoose.Schema({
   about: {type: String},
   avatar: {type: String},
   projects : [{ type: mongoose.Schema.Types.ObjectId, ref: 'Project' }],
-  userPageProject: {type: mongoose.Schema.Types.ObjectId, ref: 'Project'}
+  userPageProject: {type: String, default: null}
 });
 
 
@@ -44,8 +44,8 @@ userSchema.pre('save', async function(next){
 userSchema.post('save', async function(doc, next){
   // creates the user folder in the storage
   const userRootFolder = path.join(__dirname, ".." ,'db_files',`${doc._id}`)
-  createFolder(userRootFolder);
-  createFolder(path.join(__dirname, ".." ,'public',`${doc._id}`))
+  createFolder(path.join(userRootFolder, "__user"));
+  // createFolder(path.join(__dirname, ".." ,'public',`${doc._id}`))
 })
 
 
@@ -62,7 +62,7 @@ userSchema.post('deleteOne', {document:true, query:false}, async function(doc, n
   // removes the user folder from the storage
   const userRootFolder = path.join(__dirname, ".." ,'db_files',`${doc._id}`)
   removeFolder(userRootFolder);
-  removeFolder(path.join(__dirname, ".." ,'public',`${doc._id}`))
+  // removeFolder(path.join(__dirname, ".." ,'public',`${doc._id}`))
 })
 
 const UserModel = mongoose.model("User", userSchema);

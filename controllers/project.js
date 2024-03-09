@@ -1,8 +1,8 @@
 const path = require("path");
 const ProjectModel = require("../models/project");
 const UserModel = require("../models/user.js");
-const { exec, execSync } = require('child_process');
-
+const webpackConfig = require('../webpack.config.js');
+const webpack = require('webpack');
 
 
 // Use for getting the overview of all the projects of a user
@@ -15,20 +15,38 @@ async function getUserAllProjects(req, res){
             data
         });
     } catch (error) {
-        return res.status(404).json({ error: 'Error' });
+        return res.status(404).json(error);
     }
-    
 }
+
+// Needs authorization
+async function delAllProjects(req, res){
+    try {
+        const ownerId = req.params.uid;
+        await UserModel.findByIdAndUpdate(ownerId, {$set: {projects:[]}});
+        const data = await ProjectModel.deleteMany({owner: ownerId});
+        return res.status(200).json({
+            data
+        });
+    } catch (error) {
+        return res.status(500).json({ error: 'Error' });
+    }
+}
+
+
+
+
 // Use for getting the detail view of a project
 async function getProjectById(req, res){
     try {
         console.log("getProjectById");
         const data = await ProjectModel.findById(req.params.pid);
-        return res.status(200).json(
-            data
-        );
+        if(req.user && req.user.userId == data.owner){
+            return res.status(200).json({data, PERMISSION:"OWNER"});
+        }
+        return res.status(200).json({data, PERMISSION:"VISITOR"});
     } catch (error) {
-        return res.status(404).json({ error: 'Project Not Found' });
+        return res.status(404).json('Project Not Found');
     }
 }
 
@@ -52,43 +70,30 @@ async function createProject(req, res){
 }
 
 
-
-// Needs authorization
-async function delAllProjects(req, res){
-    try {
-        const ownerId = req.params.uid;
-        await UserModel.findByIdAndUpdate(ownerId, {$set: {projects:[]}});
-        const data = await ProjectModel.deleteMany({owner: ownerId});
-        return res.status(200).json({
-            data
-        });
-    } catch (error) {
-        return res.status(500).json({ error: 'Error' });
-    }
-}
-
 async function delProjectById(req, res){
     try {
         console.log("delProjectById")
         const data = await ProjectModel.findById(req.params.pid);
-        await data.deleteOne();
-        return res.status(200).json(
-            data
-        );
+        if(data.owner == req.user.userId){
+            await data.deleteOne();
+            return res.status(200).json(data);
+        }
+        return res.status(500).json('Permission Denied')
     } catch (error) {
-        return res.status(500).json({ error: 'Error in Deletion' });
+        return res.status(500).json('Error in Deletion' );
     }
 }
 async function updateProjectById(req, res){
     try {
         console.log("updateProjectById")
-        req.body.banner = `http://127.0.0.1:3005/public/${req.user.userId}/${req.file.filename}`
-        const data = await ProjectModel.findByIdAndUpdate(req.params.pid, req.body, {new: true});
-        return res.status(200).json(
-            data
-        );
+        const data = await ProjectModel.findById(req.params.pid);
+        if(data.owner == req.user.userId){
+            const result = await ProjectModel.findByIdAndUpdate(req.params.pid, req.body, {new: true})
+            return res.status(200).json(result);
+        }
+        return res.status(500).json('Permission Denied')
     } catch (error) {
-        return res.status(500).json({ error: 'Error in Updation' });
+        return res.status(500).json('Error in Updation' );
     }
 }
 
@@ -96,19 +101,30 @@ async function updateProjectById(req, res){
 async function transpileProject(req, res){
     try {
         console.log("transpileProject");
-        const data = await ProjectModel.findById(req.params.pid);
+        const user = await UserModel.findById(req.params.uid);
+        if(user.userPageProject === "null" || user.userPageProject === "undefined"){
+            return res.status(500).json("No default project");
+        }
 
-        const inputDir = path.resolve(__dirname, ".." ,'db_files',`${data.owner}`, `${data._id}`, "index.jsx");
-        const outputDir = path.resolve(__dirname, "..", 'bundles', `${data.owner}`);
+        const inputDir = path.resolve(__dirname, ".." ,'db_files',`${user._id}`, `${user.userPageProject}`, "index.jsx");
+        const outputDir = path.resolve(__dirname, "..", 'bundles', `${user._id}`);
 
-        const command2 = `webpack --config webpack.config.js --entry ${inputDir} --output-path ${outputDir}`;
-
-        execSync(command2)
         
-        return res.status(200).json({"msg": "compiled"});
+        webpackConfig.entry = inputDir;
+        webpackConfig.output.path = outputDir;
+        webpack(webpackConfig, (err, stats) => { 
+            if (err || stats.hasErrors()) {
+                // Handle errors here
+                console.error(err);
+                return res.status(500).json("Error in webpack");
+            }
+            // Done processing
+            console.log("compiled");
+            return res.status(200).json("compiled");
+        });
 
     } catch (error) {
-        return res.status(500).json({error: error})
+        return res.status(500).json(error)
     }
 }
 

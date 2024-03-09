@@ -11,7 +11,7 @@ const projectSchema = new mongoose.Schema({
     root: { type: mongoose.Schema.Types.ObjectId, ref: 'Folder' },
     title: { type: String, required: true },
     description: { type: String, required: false },
-    banner: {type: String}
+    banner: {type: String},
   }, 
   {timestamps:true}
 );

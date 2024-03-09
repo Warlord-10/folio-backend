@@ -12,21 +12,6 @@ async function registerUser(req, res){
         const accessToken = generateAccessToken(user._id);
         const refreshToken = generateRefreshToken(user._id);
 
-        // Storing JWT in cookies
-        // res.cookie("accessToken", accessToken, {
-        //     maxAge:60*60*1000, 
-        //     httpOnly:true, 
-        //     secure: true,
-        //     sameSite: "none"
-        // });
-        // res.cookie("refreshToken", refreshToken, {
-        //     maxAge:60*60*24*1000, 
-        //     httpOnly:true, 
-        //     secure: true,
-        //     sameSite: "none",
-        //     path:"/auth", 
-        // });
-
         return res.status(200).json({
             user, accessToken, refreshToken
         });
@@ -43,24 +28,11 @@ async function loginUser(req, res){
         );
         const result = await bcrypt.compare(req.body.password, user.password)
         if(result===true){
+            
             // Generating JWT tokens
             const accessToken = generateAccessToken(user._id);
             const refreshToken = generateRefreshToken(user._id);
             
-            // Storing JWT in cookies
-            // res.cookie("accessToken", accessToken, {
-            //     maxAge:60*60*1000, 
-            //     httpOnly:true, 
-            //     secure: true,
-            //     sameSite: "none"
-            // });
-            // res.cookie("refreshToken", refreshToken, {
-            //     maxAge:60*60*24*1000, 
-            //     httpOnly:true, 
-            //     secure: true,
-            //     sameSite: "none",
-            //     path:"/auth", 
-            // });
             
             return res.status(200).json({
                 user, accessToken, refreshToken

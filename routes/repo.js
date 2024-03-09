@@ -1,6 +1,6 @@
 const express = require("express");
 const { makeFile, removeFile, getFolder, makeFolder, removeFolder, getFileData, getFileDetail, uploadFile, updateFile, updateFolder, testFunc } = require("../controllers/repo");
-const verifyTokenMiddleWare = require("../middleware/auth");
+const {verifyTokenMiddleWare} = require("../middleware/auth");
 const { fileUploadMiddleware } = require("../middleware/multer");
 
 

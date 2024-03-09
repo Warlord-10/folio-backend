@@ -14,9 +14,12 @@ const userRoutes = require("./routes/user.js");
 const projectRoutes = require("./routes/project.js");
 const repoRoutes = require("./routes/repo.js");
 const { startDatabase } = require('./mongodb.js');
+const { createFolder } = require('./fileManager.js');
 
 
 // Creating an Express application
+createFolder("bundles")
+createFolder("db_files")
 const app = express();  
 // DB connect
 startDatabase(process.env.DB_URL)
@@ -40,7 +43,7 @@ app.use("/projects", projectRoutes);
 app.use("/repo", repoRoutes);
 
 app.use("/test", express.static(path.join(__dirname, 'bundles')));
-app.use("/public", express.static(path.join(__dirname, 'public')));
+app.use("/public", express.static(path.join(__dirname, 'db_files')));
 
 if(process.env.MODE == "dev"){
   const server = app.listen(process.env.PORT || 3005, ()=>{

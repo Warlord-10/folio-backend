@@ -5,6 +5,15 @@ const ProjectModel = require("../models/project");
 const { createFolder } = require("../fileManager");
 
 
+const fileFilter = (req, file, cb) => {
+  // Check if file type is image
+  if (file.mimetype.startsWith('image/')) {
+      cb(null, true); // Accept the file
+  } else {
+      cb(new Error('Only image files are allowed'), false); // Reject the file
+  }
+}
+
 const fileUploadMiddleware = multer({storage: multer.diskStorage({
   destination: async function (req, file, cb) {
     try {
@@ -26,31 +35,38 @@ const fileUploadMiddleware = multer({storage: multer.diskStorage({
 const avatarUploadMiddleware = multer({storage: multer.diskStorage({
   destination: async function (req, file, cb) {
     try {
-      createFolder(path.join(__dirname, "..", "public", `${req.params.uid}`))
-      return cb(null, path.join(__dirname, "..", "public", `${req.params.uid}`))
+      const fullPath = path.join(__dirname, "..", "db_files", `${req.params.uid}`, '__user')
+      return cb(null, fullPath);
     } catch (error) {
       console.log(error);
     }
   },
   filename: function (req, file, cb) {
-    return cb(null, "avatar" + path.extname(file.originalname))
+    try {
+      req.body.avatar = `${req.params.uid}/__user/avatar.jpeg`
+      return cb(null, "avatar.jpeg")
+    } catch (error) {
+      console.log(error);
+    }  
   }
-})})
+}),fileFilter: fileFilter})
 
 const bannerUploadMiddleware = multer({storage: multer.diskStorage({
   destination: async function(req, file, cb){
     try {
       const project = await ProjectModel.findById(req.params.pid)
-      return cb(null, path.join(__dirname, "..", "public", `${project.owner}`))
+      const fullPath = path.join(__dirname, "..", "db_files", `${project.owner}`, '__user')
+      req.body.banner = `${project.owner}/__user/`
+      return cb(null, fullPath)
     } catch (error) {
       console.log(error);
     }
   },
   filename: function(req, file, cb){
-    return cb(null, `${req.params.pid}` + path.extname(file.originalname))
+    req.body.banner = req.body.banner+`${req.params.pid}.jpeg`
+    return cb(null, `${req.params.pid}.jpeg`)
   }
-})});
+}), fileFilter: fileFilter});
 
 
 module.exports = {fileUploadMiddleware, avatarUploadMiddleware, bannerUploadMiddleware};
-// module.exports = upload.array('file');

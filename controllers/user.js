@@ -32,15 +32,13 @@ async function delAllUser(req, res){
 async function getUserById(req, res){
     console.log("getUserById");
     try {
-        let data;
-        if(req.user){
-            data = await UserModel.findById(req.user.userId, "-password").populate("projects");
+        const data = await UserModel.findById(req.params.uid, "-password").populate("projects");
+        if(req.user && req.user.userId == req.params.uid){
+            return res.status(200).json({data, PERMISSION:"OWNER"});
         }
-        else{
-            data = await UserModel.findById(req.params.uid, "-password").populate("projects");
-        }
-        return res.status(200).json(data);
+        return res.status(200).json({data, PERMISSION:"VISITOR"});
     } catch (error) {
+        console.log(error)
         return res.status(500).json(error);
     }
 }
@@ -54,19 +52,18 @@ async function delUserById(req, res){
             data
         );
     } catch (error) {
-        return res.status(500).json({ error: error });
+        return res.status(500).json(error);
     }
 }
 async function updateUserById(req, res){
     try {
         console.log("updateUserById");
-        req.body.avatar = `http://127.0.0.1:3005/public/${req.user.userId}/${req.file.filename}`
-        const data = await UserModel.findByIdAndUpdate(req.user.userId, req.body, {new: true});
+        const data = await UserModel.findByIdAndUpdate(req.user.userId, req.body, {new: true}).populate("projects");
         return res.status(200).json(
             data
         )
     } catch (error) {
-        return res.status(404).json({error: "Error "});
+        return res.status(404).json(error);
     }
 }
 
@@ -74,15 +71,13 @@ async function getUserProfilePage(req, res){
     try {
         console.log("getUserProfilePage");
         const data = await UserModel.findById(req.params.uid);
-        if(data.userPageProject === undefined || data.userPageProject === null){
-            return res.status(404).json({error: "No Folio Set"});
+        if(data.userPageProject === "undefined" || data.userPageProject === "null"){
+            return res.status(404).json("No Folio Set");
         }
-        const inputDir = path.join('test',`${data._id}`,'bundle.js')
-        return res.status(200).json({
-            link: inputDir
-        })
+        const inputDir = `${data._id}/bundle.js`
+        return res.status(200).json(inputDir)
     } catch (error) {
-        return res.status(404).json({error: error});
+        return res.status(404).json("Error Occured");
     }
 }
 

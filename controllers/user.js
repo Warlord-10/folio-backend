@@ -31,10 +31,7 @@ async function getUserById(req, res){
     console.log("getUserById");
     try {
         const data = await UserModel.findById(req.params.uid, "-password").populate("projects");
-        if(req.user){
-            console.log(req.user, req.params.uid);
-        }
-        if(req.user && req.user.userId === req.params.uid){
+        if(req.user && req.user.userId == req.params.uid){
             return res.status(200).json({data, PERMISSION:"OWNER"});
         }
         return res.status(200).json({data, PERMISSION:"VISITOR"});

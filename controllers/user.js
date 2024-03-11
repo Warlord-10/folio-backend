@@ -1,6 +1,4 @@
-const ProjectModel = require("../models/project");
 const UserModel = require("../models/user");
-const path = require("path")
 
 // For admin task only
 async function getAllUser(req, res){
@@ -33,7 +31,7 @@ async function getUserById(req, res){
     console.log("getUserById");
     try {
         const data = await UserModel.findById(req.params.uid, "-password").populate("projects");
-        if(req.user && req.user.userId == req.params.uid){
+        if(req.user && req.user.userId === req.params.uid){
             return res.status(200).json({data, PERMISSION:"OWNER"});
         }
         return res.status(200).json({data, PERMISSION:"VISITOR"});

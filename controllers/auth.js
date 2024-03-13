@@ -2,6 +2,21 @@ const bcrypt = require('bcrypt');
 const { generateAccessToken, generateRefreshToken } = require("../jwt");
 const UserModel = require("../models/user");
 
+const accessCookieSetting = {
+    domain: "deepanshu.malaysingh.com",
+    maxAge: 60*60*1000,
+    secure: true,
+    sameSite: "none",
+    // httpOnly: true,
+}
+const refreshCookieSetting = {
+    domain: "deepanshu.malaysingh.com",
+    maxAge: 60*60*24*1000,
+    secure: true,
+    sameSite: "none",
+    // httpOnly: true,
+}
+
 
 async function registerUser(req, res){
     try {
@@ -12,20 +27,8 @@ async function registerUser(req, res){
         const accessToken = generateAccessToken(user._id);
         const refreshToken = generateRefreshToken(user._id);
 
-        res.cookie("accessToken", accessToken, {
-            domain: "deepanshu.malaysingh.com",
-            maxAge: 60*60*1000,
-            secure: true,
-            sameSite: "none",
-            httpOnly: true,
-        })
-        res.cookie("refreshToken", refreshToken, {
-            domain: "deepanshu.malaysingh.com",
-            maxAge: 60*60*24*1000,
-            secure: true,
-            sameSite: "none",
-            httpOnly: true,
-        })
+        res.cookie("accessToken", accessToken, accessCookieSetting)
+        res.cookie("refreshToken", refreshToken, refreshCookieSetting)
 
         return res.status(200).json(user);
     } catch (error) {
@@ -46,20 +49,8 @@ async function loginUser(req, res){
             const accessToken = generateAccessToken(user._id);
             const refreshToken = generateRefreshToken(user._id);
             
-            res.cookie("accessToken", accessToken, {
-                domain: "deepanshu.malaysingh.com",
-                maxAge: 60*60*1000,
-                secure: true,
-                sameSite: "none",
-                httpOnly: true,
-            })
-            res.cookie("refreshToken", refreshToken, {
-                domain: "deepanshu.malaysingh.com",
-                maxAge: 60*60*24*1000,
-                secure: true,
-                sameSite: "none",
-                httpOnly: true,
-            })
+            res.cookie("accessToken", accessToken, accessCookieSetting)
+            res.cookie("refreshToken", refreshToken, refreshCookieSetting)
             
             return res.status(200).json(user);
         }

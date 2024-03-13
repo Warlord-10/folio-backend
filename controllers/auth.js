@@ -12,6 +12,21 @@ async function registerUser(req, res){
         const accessToken = generateAccessToken(user._id);
         const refreshToken = generateRefreshToken(user._id);
 
+        res.cookie("accessToken", accessToken, {
+            domain: "deepanshu.malaysingh.com",
+            maxAge: 60*60*1000,
+            secure: true,
+            sameSite: "none",
+            httpOnly: true,
+        })
+        res.cookie("refreshToken", refreshToken, {
+            domain: "deepanshu.malaysingh.com",
+            maxAge: 60*60*24*1000,
+            secure: true,
+            sameSite: "none",
+            httpOnly: true,
+        })
+
         return res.status(200).json({
             user, accessToken, refreshToken
         });
@@ -33,6 +48,20 @@ async function loginUser(req, res){
             const accessToken = generateAccessToken(user._id);
             const refreshToken = generateRefreshToken(user._id);
             
+            res.cookie("accessToken", accessToken, {
+                domain: "deepanshu.malaysingh.com",
+                maxAge: 60*60*1000,
+                secure: true,
+                sameSite: "none",
+                httpOnly: true,
+            })
+            res.cookie("refreshToken", refreshToken, {
+                domain: "deepanshu.malaysingh.com",
+                maxAge: 60*60*24*1000,
+                secure: true,
+                sameSite: "none",
+                httpOnly: true,
+            })
             
             return res.status(200).json({
                 user, accessToken, refreshToken

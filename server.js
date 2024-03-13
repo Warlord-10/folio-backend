@@ -30,7 +30,12 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(cors({
-  origin: true,  // allows request from 3000, true/* indicate all origin
+  origin: [
+    "http://localhost:3000", 
+    "https://folio-fullstack.vercel.app/", 
+    "https://folio-git-main-warlord-10s-projects.vercel.app/", 
+    "https://folio-warlord-10s-projects.vercel.app/"
+  ],  // allows request from 3000, true/* indicate all origin
   methods: ["GET", "PATCH", "POST", "DELETE", "PUT"],
   credentials: true,
 }));

@@ -27,9 +27,7 @@ async function registerUser(req, res){
             httpOnly: true,
         })
 
-        return res.status(200).json({
-            user, accessToken, refreshToken
-        });
+        return res.status(200).json(user);
     } catch (error) {
         return res.status(500).json('User creation failed');
     }
@@ -63,9 +61,7 @@ async function loginUser(req, res){
                 httpOnly: true,
             })
             
-            return res.status(200).json({
-                user, accessToken, refreshToken
-            });
+            return res.status(200).json(user);
         }
         else{
             return res.status(500).json('Incorrect Password');

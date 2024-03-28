@@ -7,14 +7,14 @@ const accessCookieSetting = {
     maxAge: 60*60*1000,
     secure: true,
     sameSite: "none",
-    httpOnly: false,
+    httpOnly: true,
 }
 const refreshCookieSetting = {
     domain: "deepanshu.malaysingh.com",
     maxAge: 60*60*24*1000,
     secure: true,
     sameSite: "none",
-    httpOnly: false,
+    httpOnly: true,
 }
 
 

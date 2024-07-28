@@ -17,9 +17,10 @@ function verifyRefreshToken(tok){
     try{
         return jwt.verify(tok, process.env.REFRESH_TOKEN);
     }catch (err) {
-        return null;
+        throw err;
     }
 }
+
 
 function generateAccessToken(userId){
     try {
@@ -36,7 +37,7 @@ function verifyAccessToken(tok){
     try{
         return jwt.verify(tok, process.env.ACCESS_TOKEN);
     }catch (err) {
-        return null;
+        throw err;
     }
 }
 

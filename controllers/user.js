@@ -40,15 +40,19 @@ async function getUserById(req, res){
         return res.status(500).json(error);
     }
 }
-// Needs authorization
 async function delUserById(req, res){
     try {
         console.log("delUserById");
         const data = await UserModel.findById(req.user.userId);
-        await data.deleteOne();
-        return res.status(200).json(
-            data
-        );
+        if(req.user && req.user.userId == req.params.uid){
+            await data.deleteOne();
+            return res.status(200).json(
+                data
+            );
+        }
+        else{
+            return res.status(500).json("Permission Denied");
+        }
     } catch (error) {
         return res.status(500).json(error);
     }
@@ -56,14 +60,20 @@ async function delUserById(req, res){
 async function updateUserById(req, res){
     try {
         console.log("updateUserById");
-        const data = await UserModel.findByIdAndUpdate(req.user.userId, req.body, {new: true}).populate("projects");
-        return res.status(200).json(
-            data
-        )
+        if(req.user && req.user.userId == req.params.uid){
+            const data = await UserModel.findByIdAndUpdate(req.user.userId, req.body, {new: true}).populate("projects");
+            return res.status(200).json(
+                data
+            )
+        }
+        else{
+            return res.status(500).json("Permission Denied");
+        }
     } catch (error) {
         return res.status(404).json(error);
     }
 }
+
 
 async function getUserProfilePage(req, res){
     try {
@@ -79,6 +89,24 @@ async function getUserProfilePage(req, res){
     }
 }
 
+async function findUser(req, res){
+    try {
+        console.log("findUser");
+        const searchTerm = req.query.name;
+        const regex = new RegExp(searchTerm, 'i');
+        const data = await UserModel
+            .find({name: { $regex: regex}})
+            .limit(10)
+            .select("name _id")
+            .exec();
+        return res.status(200).json(
+            data
+        );
+    } catch (error) {
+        return res.status(500).json({ error: 'Error' });
+    }
+}
+
 module.exports = {
     getAllUser,
     delAllUser,
@@ -86,5 +114,7 @@ module.exports = {
     getUserById,
     delUserById,
     updateUserById,
+
     getUserProfilePage,
+    findUser,
 }

@@ -3,14 +3,14 @@ const { generateAccessToken, generateRefreshToken } = require("../jwt");
 const UserModel = require("../models/user");
 
 const accessCookieSetting = {
-    domain: "deepanshu.malaysingh.com",
+    domain: process.env.MODE !== "dev" ? "deepanshu.malaysingh.com": null,
     maxAge: 60*60*1000,
     secure: true,
     sameSite: "none",
     httpOnly: true,
 }
 const refreshCookieSetting = {
-    domain: "deepanshu.malaysingh.com",
+    domain: process.env.MODE !== "dev" ? "deepanshu.malaysingh.com": null,
     maxAge: 60*60*24*1000,
     secure: true,
     sameSite: "none",

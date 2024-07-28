@@ -1,32 +1,36 @@
-const { verifyAccessToken } = require("../jwt");
+const { verifyAccessToken, verifyRefreshToken, generateAccessToken } = require("../jwt");
 
-function verifyTokenMiddleWare(req, res, next){
-    // console.log("middle")
-    // console.log(req.headers)
+function verifyRefreshTokenMiddleWare(req, res, next){
     try {
-        const token = req.cookies.accessToken;
-        const decoded = verifyAccessToken(token);
-        req.user = decoded;
+        const refresh_token = req.cookies.refreshToken;
+        const decoded_refresh_token = verifyRefreshToken(refresh_token);
+
+        req.user = decoded_refresh_token;
         next();
     } catch (error) {
-        next();
-        // return res.status(405).json("Token Expired");
+        return res.status(401).json("Token Expired");
     }
 }
 
-function userAuthorizationMiddleware(req, res, next){
+function verifyAccessTokenMiddleWare(req, res, next){
     try {
-        const token = req.cookies.accessToken;
-        const decoded = verifyAccessToken(token);
-        req.user = decoded;
-        if(req.params.uid == decoded.userId){
-            next();
-        }
-        else{
-            return res.status(500).json("Permission Denied")
-        }
+        const access_token = req.cookies.accessToken;
+        const decoded_access_token = verifyAccessToken(access_token);
+
+        req.user = decoded_access_token;
+        next();
     } catch (error) {
-        return res.status(405).json("Token Expired");
+        const new_access_token = generateAccessToken(req.user.userId);
+        res.cookie("accessToken", new_access_token, {
+            domain: process.env.MODE !== "dev" ? "deepanshu.malaysingh.com": null,
+            maxAge: 60*60*1000,
+            secure: true,
+            sameSite: "none",
+            httpOnly: true,
+        }); 
+        next();
     }
 }
-module.exports = {verifyTokenMiddleWare, userAuthorizationMiddleware}
+
+
+module.exports = {verifyRefreshTokenMiddleWare, verifyAccessTokenMiddleWare}

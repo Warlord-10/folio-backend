@@ -9,7 +9,7 @@ const webpack = require('webpack');
 async function getUserAllProjects(req, res){
     try {
         console.log("getUserAllProjects")
-        const data = await ProjectModel.find({owner: req.params.uid});
+        const data = await ProjectModel.find({owner: req.user.userId});
         
         return res.status(200).json({
             data
@@ -22,7 +22,7 @@ async function getUserAllProjects(req, res){
 // Needs authorization
 async function delAllProjects(req, res){
     try {
-        const ownerId = req.params.uid;
+        const ownerId = req.user.userId;
         await UserModel.findByIdAndUpdate(ownerId, {$set: {projects:[]}});
         const data = await ProjectModel.deleteMany({owner: ownerId});
         return res.status(200).json({
@@ -101,7 +101,7 @@ async function updateProjectById(req, res){
 async function transpileProject(req, res){
     try {
         console.log("transpileProject");
-        const user = await UserModel.findById(req.params.uid);
+        const user = await UserModel.findById(req.user.userId);
         if(user.userPageProject === "null" || user.userPageProject === "undefined"){
             return res.status(500).json("No default project");
         }

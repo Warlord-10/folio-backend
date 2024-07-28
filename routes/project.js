@@ -1,21 +1,20 @@
 const express = require("express");
 const { getUserAllProjects, getProjectById, delAllProjects, delProjectById, createProject, updateProjectById, transpileProject } = require("../controllers/project");
-const {verifyTokenMiddleWare, userAuthorizationMiddleware} = require("../middleware/auth");
+const {verifyRefreshTokenMiddleWare, verifyAccessTokenMiddleWare} = require("../middleware/auth");
 const { bannerUploadMiddleware } = require("../middleware/multer");
 
 
 const router = express.Router();
+router.use(verifyRefreshTokenMiddleWare, verifyAccessTokenMiddleWare);
 
-router.get("/:uid", getUserAllProjects);
-router.delete("/:uid", delAllProjects);
+router.get("/", getUserAllProjects);
+router.delete("/", delAllProjects);
 
-// Id will be taken from jwt
-router.post("/s/:uid", userAuthorizationMiddleware, createProject);
-router.get("/transpile/:uid", userAuthorizationMiddleware, transpileProject);
-
-router.get("/s/:pid", verifyTokenMiddleWare, getProjectById);
-router.patch("/s/:pid", verifyTokenMiddleWare, bannerUploadMiddleware.single('file'), updateProjectById);
-router.delete("/s/:pid", verifyTokenMiddleWare, delProjectById);
+router.get("/transpile", transpileProject);
+router.post("/s", createProject);
+router.get("/s/:pid", getProjectById);
+router.patch("/s/:pid", bannerUploadMiddleware.single('file'), updateProjectById);
+router.delete("/s/:pid", delProjectById);
 
 
 

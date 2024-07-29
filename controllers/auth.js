@@ -30,6 +30,8 @@ async function registerUser(req, res){
         res.cookie("accessToken", accessToken, accessCookieSetting)
         res.cookie("refreshToken", refreshToken, refreshCookieSetting)
 
+        req.session.user = user;
+
         return res.status(200).json(user);
     } catch (error) {
         return res.status(500).json('User creation failed');
@@ -39,9 +41,15 @@ async function registerUser(req, res){
 async function loginUser(req, res){
     try {
         console.log("loginUser");
+
+        if(req.session.user){
+            return res.status(200).json(req.session.user);
+        }
+
         const user = await UserModel.findOne(
             {email: req.body.email}
         );
+
         const result = await bcrypt.compare(req.body.password, user.password)
         if(result===true){
             
@@ -51,6 +59,8 @@ async function loginUser(req, res){
             
             res.cookie("accessToken", accessToken, accessCookieSetting)
             res.cookie("refreshToken", refreshToken, refreshCookieSetting)
+
+            req.session.user = user;
             
             return res.status(200).json(user);
         }
@@ -62,7 +72,35 @@ async function loginUser(req, res){
     }
 }
 
+
+async function getSession(req, res){
+    try {
+        console.log("getSession");
+        // console.log(req.session.user)
+        if(req.session.user){
+            return res.status(200).json(req.session.user);
+        }
+    } catch (error) {
+        return res.status(500).json('Error');
+    }
+}
+
+
+async function logoutUser(req, res){
+    try {
+        console.log("logoutUser");
+        res.clearCookie("accessToken");
+        res.clearCookie("refreshToken");
+        req.session.destroy();
+        return res.status(200).json('Logout Successful');
+    } catch (error) {
+        return res.status(500).json('Logout Failed');
+    }
+}
+
 module.exports = {
     registerUser,
-    loginUser
+    loginUser,
+    getSession,
+    logoutUser,
 }

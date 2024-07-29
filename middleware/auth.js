@@ -20,14 +20,28 @@ function verifyAccessTokenMiddleWare(req, res, next){
         req.user = decoded_access_token;
         next();
     } catch (error) {
-        const new_access_token = generateAccessToken(req.user.userId);
-        res.cookie("accessToken", new_access_token, {
-            domain: process.env.MODE !== "dev" ? "deepanshu.malaysingh.com": null,
-            maxAge: 60*60*1000,
-            secure: true,
-            sameSite: "none",
-            httpOnly: true,
-        }); 
+
+        // Refresh Token Exists
+        if(req.cookies.refreshToken !== null && req.cookies.refreshToken !== undefined){
+            const decoded_refresh_token = verifyRefreshToken(req.cookies.refreshToken);
+            const new_access_token = generateAccessToken(decoded_refresh_token.userId);
+
+            // Setting Cookies
+            res.cookie("accessToken", new_access_token, {
+                domain: process.env.MODE !== "dev" ? "deepanshu.malaysingh.com": null,
+                maxAge: 60*60*1000,
+                secure: true,
+                sameSite: "none",
+                httpOnly: true,
+            }); 
+
+            req.user = new_access_token;
+        } 
+        // No Refresh Token
+        else{
+            req.user = null;
+        }
+
         next();
     }
 }

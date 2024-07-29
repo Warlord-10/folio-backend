@@ -5,7 +5,7 @@ const { bannerUploadMiddleware } = require("../middleware/multer");
 
 
 const router = express.Router();
-router.use(verifyRefreshTokenMiddleWare, verifyAccessTokenMiddleWare);
+router.use(verifyAccessTokenMiddleWare);
 
 router.get("/", getUserAllProjects);
 router.delete("/", delAllProjects);

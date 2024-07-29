@@ -6,7 +6,7 @@ const { fileUploadMiddleware } = require("../middleware/multer");
 
 
 const router = express.Router();
-router.use(verifyRefreshTokenMiddleWare, verifyAccessTokenMiddleWare);
+router.use(verifyAccessTokenMiddleWare);
 
 router.post("/file", makeFile);
 router.patch("/file/:fid", updateFile);

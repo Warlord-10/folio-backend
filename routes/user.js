@@ -10,9 +10,9 @@ const router = express.Router();
 router.get("/", getAllUser);    // for testing only
 router.delete("/", delAllUser); // for testing only
 
-router.get("/s/:uid", verifyRefreshTokenMiddleWare, verifyAccessTokenMiddleWare, getUserById);
-router.patch("/s/:uid", verifyRefreshTokenMiddleWare, verifyAccessTokenMiddleWare, avatarUploadMiddleware.single('file'), updateUserById);
-router.delete("/s/:uid", verifyRefreshTokenMiddleWare, verifyAccessTokenMiddleWare, delUserById);
+router.get("/s/:uid", verifyAccessTokenMiddleWare, getUserById);
+router.patch("/s/:uid", verifyAccessTokenMiddleWare, avatarUploadMiddleware.single('file'), updateUserById);
+router.delete("/s/:uid", verifyAccessTokenMiddleWare, delUserById);
 
 router.get("/page/:uid", getUserProfilePage);
 

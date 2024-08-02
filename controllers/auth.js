@@ -32,7 +32,7 @@ async function registerUser(req, res){
 
         req.session.user = user;
 
-        return res.status(200).json(user);
+        return res.status(201).json(user);
     } catch (error) {
         return res.status(500).json('User creation failed');
     }
@@ -42,6 +42,7 @@ async function loginUser(req, res){
     try {
         console.log("loginUser");
 
+        // Look into the session
         if(req.session.user){
             return res.status(200).json(req.session.user);
         }
@@ -65,7 +66,7 @@ async function loginUser(req, res){
             return res.status(200).json(user);
         }
         else{
-            return res.status(500).json('Incorrect Password');
+            return res.status(401).json('Incorrect Password');
         }
     } catch (error) {
         return res.status(404).json('User Not Found');
@@ -76,9 +77,11 @@ async function loginUser(req, res){
 async function getSession(req, res){
     try {
         console.log("getSession");
-        // console.log(req.session.user)
         if(req.session.user){
             return res.status(200).json(req.session.user);
+        }
+        else{
+            return res.status(404).json('No Session');
         }
     } catch (error) {
         return res.status(500).json('Error');

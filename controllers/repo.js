@@ -23,7 +23,7 @@ async function makeFolder(req, res){
             name: req.body.name,
             parent: req.body.parent
         });
-        return res.status(200).json(
+        return res.status(201).json(
             folder
         );
     } catch (error) {
@@ -100,7 +100,7 @@ async function makeFile(req, res){
                 });
             }
         });
-        return res.status(200).json(
+        return res.status(201).json(
             fileObj
         );
     } catch (error) {

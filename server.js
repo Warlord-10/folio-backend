@@ -50,6 +50,8 @@ app.use(session({
   cookie: {
     secure: process.env.MODE == "dev" ? false : true, // Set to true in production if using HTTPS
     maxAge: 1000 * 60 * 60 * 24, // Session lifetime (24 hours)
+    sameSite: "none",
+    httpOnly: true,
   },
 }));
 

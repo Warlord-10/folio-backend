@@ -60,7 +60,7 @@ async function createProject(req, res){
             title: req.body.title,
             description: req.body.description,
         });
-        return res.status(200).json({
+        return res.status(201).json({
             msg:"created",
             pid: project
         });
@@ -78,7 +78,7 @@ async function delProjectById(req, res){
             await data.deleteOne();
             return res.status(200).json(data);
         }
-        return res.status(500).json('Permission Denied')
+        return res.status(401).json('Permission Denied')
     } catch (error) {
         return res.status(500).json('Error in Deletion' );
     }
@@ -91,7 +91,7 @@ async function updateProjectById(req, res){
             const result = await ProjectModel.findByIdAndUpdate(req.params.pid, req.body, {new: true})
             return res.status(200).json(result);
         }
-        return res.status(500).json('Permission Denied')
+        return res.status(401).json('Permission Denied')
     } catch (error) {
         return res.status(500).json('Error in Updation' );
     }

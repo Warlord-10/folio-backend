@@ -14,14 +14,19 @@ const authRoutes = require("./routes/auth.js");
 const userRoutes = require("./routes/user.js");
 const projectRoutes = require("./routes/project.js");
 const repoRoutes = require("./routes/repo.js");
-const { startDatabase } = require('./mongodb.js');
-const { createFolder } = require('./fileManager.js');
+const portfolioRoutes = require("./routes/portfolio.js");
+const v2Routes = require("./routes/v2.js");
+
+const { startDatabase } = require('./utils/mongodb.js');
+const { createFolder } = require('./utils/fileManager.js');
 
 
 // Creating an Express application
-createFolder("bundles")
-createFolder("db_files")
+createFolder(process.env.BUNDLED_PROJECT_DEST)  // It stores project bundles of each user
+createFolder(process.env.USER_FILE_DEST)  // It stores the user files
+createFolder(process.env.PROJECT_FILE_DEST) // It stores the project files of the projects 
 const app = express();  
+
 // DB connect
 startDatabase(process.env.DB_URL)
 
@@ -34,8 +39,9 @@ app.use(cors({
   origin: [
     "http://localhost:3000", 
     "https://folio-fullstack.vercel.app", 
+    "https://foli0.vercel.app", 
     "https://folio-git-main-warlord-10s-projects.vercel.app", 
-    "https://folio-warlord-10s-projects.vercel.app"
+    "https://folio-warlord-10s-projects.vercel.app",
   ],  // allows request from 3000, true/* indicate all origin
   methods: ["GET", "PATCH", "POST", "DELETE", "PUT"],
   credentials: true,
@@ -48,7 +54,7 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.MODE == "dev" ? false : true, // Set to true in production if using HTTPS
+    secure: process.env.MODE === "dev" ? false : true, // Set to true in production if using HTTPS
     maxAge: 1000 * 60 * 60 * 24, // Session lifetime (24 hours)
     sameSite: "none",
     httpOnly: true,
@@ -61,9 +67,20 @@ app.use("/auth", authRoutes);
 app.use("/user", userRoutes);
 app.use("/projects", projectRoutes);
 app.use("/repo", repoRoutes);
+app.use("/portfolio", portfolioRoutes);
 
-app.use("/test", express.static(path.join(__dirname, 'bundles')));
-app.use("/public", express.static(path.join(__dirname, 'db_files')));
+app.use("/v2", v2Routes);
+// app.use("/git")
+
+app.use("/bundle", express.static(path.join(process.cwd(), process.env.BUNDLED_PROJECT_DEST)));
+app.use("/public", express.static(path.join(process.cwd(), process.env.USER_FILE_DEST)));
+app.use("/banner", express.static(path.join(process.cwd(), process.env.PROJECT_FILE_DEST)));
+
+// For testing only
+app.get("/test", (req, res) => {
+  res.send(path.join(process.cwd(), "template.html"));
+})
+
 
 if(process.env.MODE == "dev"){
   const server = app.listen(process.env.PORT || 3005, ()=>{
@@ -74,8 +91,8 @@ if(process.env.MODE == "dev"){
 }
 else{
   const options = {
-    key: fs.readFileSync('/etc/letsencrypt/live/deepanshu.malaysingh.com/privkey.pem'),
-    cert: fs.readFileSync('/etc/letsencrypt/live/deepanshu.malaysingh.com/fullchain.pem')
+    key: fs.readFileSync(`/etc/letsencrypt/live/${process.env.DOMAIN}/privkey.pem`),
+    cert: fs.readFileSync(`/etc/letsencrypt/live/${process.env.DOMAIN}/fullchain.pem`)
   };
   https.createServer(options, app).listen(process.env.PORT || 3005)
 }

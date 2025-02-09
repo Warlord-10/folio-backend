@@ -1,4 +1,4 @@
 {
-    "ignore": ["db_files/*"]
+    "ignore": ["db_files/*", "projects_bundles/*", "user_files/*"]
 }
   

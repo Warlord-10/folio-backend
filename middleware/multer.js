@@ -2,7 +2,7 @@ const multer = require("multer");
 const path = require("path");
 const { FileModel } = require("../models/repo");
 const ProjectModel = require("../models/project");
-const { createFolder } = require("../fileManager");
+const { createFolder } = require("../utils/fileManager");
 
 
 const fileFilter = (req, file, cb) => {
@@ -14,15 +14,19 @@ const fileFilter = (req, file, cb) => {
   }
 }
 
+// For uploading files
 const fileUploadMiddleware = multer({storage: multer.diskStorage({
   destination: async function (req, file, cb) {
     try {
       const newFile = await FileModel.create({
         name: file.originalname,
-        parent: req.params.fid
+        parent_id: req.params.fid,
+        size: file.size,
+        extension: path.extname(file.originalname)
       })
-      req.body.fileObj = newFile
-      return cb(null, path.dirname(newFile.location))
+      const filePath = newFile.relPath.slice(0, newFile.relPath.lastIndexOf("\\"))
+      return cb(null, path.join(process.cwd(), process.env.PROJECT_FILE_DEST, filePath))
+
     } catch (error) {
       console.log(error);
     }
@@ -32,10 +36,12 @@ const fileUploadMiddleware = multer({storage: multer.diskStorage({
   }
 })})
 
+
+// For uploading avatar/profile picture
 const avatarUploadMiddleware = multer({storage: multer.diskStorage({
   destination: async function (req, file, cb) {
     try {
-      const fullPath = path.join(__dirname, "..", "db_files", `${req.params.uid}`, '__user')
+      const fullPath = path.join(process.cwd(), process.env.USER_FILE_DEST, `${req.params.uid}`)
       return cb(null, fullPath);
     } catch (error) {
       console.log(error);
@@ -43,7 +49,7 @@ const avatarUploadMiddleware = multer({storage: multer.diskStorage({
   },
   filename: function (req, file, cb) {
     try {
-      req.body.avatar = `${req.params.uid}/__user/avatar.jpeg`
+      req.body.avatar_path = `${req.params.uid}/avatar.jpeg`
       return cb(null, "avatar.jpeg")
     } catch (error) {
       console.log(error);
@@ -51,20 +57,22 @@ const avatarUploadMiddleware = multer({storage: multer.diskStorage({
   }
 }),fileFilter: fileFilter})
 
+
+// For uploading project banner
 const bannerUploadMiddleware = multer({storage: multer.diskStorage({
   destination: async function(req, file, cb){
     try {
       const project = await ProjectModel.findById(req.params.pid)
-      const fullPath = path.join(__dirname, "..", "db_files", `${project.owner}`, '__user')
-      req.body.banner = `${project.owner}/__user/`
+      const fullPath = path.join(process.cwd(), process.env.PROJECT_FILE_DEST, project.owner_id.toHexString(), project.title)
+      req.body.banner_path = path.join(project.owner_id.toHexString(), project.title, "project_banner.jpeg");
       return cb(null, fullPath)
+
     } catch (error) {
       console.log(error);
     }
   },
   filename: function(req, file, cb){
-    req.body.banner = req.body.banner+`${req.params.pid}.jpeg`
-    return cb(null, `${req.params.pid}.jpeg`)
+    return cb(null, `project_banner.jpeg`)
   }
 }), fileFilter: fileFilter});
 

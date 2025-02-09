@@ -1,50 +1,60 @@
 const { FileModel, FolderModel } = require("../models/repo");
-const path = require('path');
 const fs = require('fs');
-const express = require("express");
+const logger = require("../utils/logger.js");
+const path = require('path');
 
-async function getFolder(req, res){
+async function getFolder(req, res) {
     try {
         console.log("getFolder");
-        const folder = await FolderModel.findById(req.params.fid).populate(["files", "folders"]);
-        return res.status(200).json(
-            folder
-        );
+        const data = await FolderModel.findById(req.params.fid);
+
+        const folder = await FolderModel.find({
+            parent_id: req.params.fid
+        })
+        const files = await FileModel.find({
+            parent_id: req.params.fid
+        })
+        return res.status(200).json({
+            data: data,
+            folders: folder,
+            files: files
+        });
     } catch (error) {
         return res.status(404).json({
             msg: "Folder Not Found"
         });
     }
 }
-async function makeFolder(req, res){
+async function makeFolder(req, res) {
     try {
-        console.log("makeFolder");
+        console.log("makeFolder", req.body);
         const folder = await FolderModel.create({
-            name: req.body.name,
-            parent: req.body.parent
+            name: req.body.folder_name,
+            parent_id: req.body.parent
         });
         return res.status(201).json(
             folder
         );
     } catch (error) {
+        logger(error)
         return res.status(500).json({
             msg: "Folder not created"
         });
     }
 }
-async function updateFolder(req, res){
+async function updateFolder(req, res) {
     try {
         console.log("updateFolder");
-        const folder = await FolderModel.findByIdAndUpdate(req.params.fid, req.body, {new: true});
+        const folder = await FolderModel.findByIdAndUpdate(req.params.fid, req.body, { new: true });
         return res.status(200).json(
             folder
         );
     } catch (error) {
-        return res.status(500).json({error: error});
+        return res.status(500).json({ error: error });
     }
 }
 
-async function removeFolder(req, res){
+async function removeFolder(req, res) {
     try {
         console.log("removeFolder");
         const folder = await FolderModel.findById(req.params.fid);
@@ -53,26 +63,27 @@ async function removeFolder(req, res){
             ans
         );
     } catch (error) {
-        return res.status(500).json({error: error});
+        return res.status(500).json({ error: error });
     }
 }
 
 
 // reads the file and sends its content
-async function getFileData(req, res){
+async function getFileData(req, res) {
     try {
         console.log("getFileData");
         const file = await FileModel.findById(req.params.fid);
-        const filePath = file.location;
+        const filePath = path.join(process.cwd(), process.env.PROJECT_FILE_DEST, file.relPath)
         return res.sendFile(filePath);
     } catch (error) {
+        logger(error)
         return res.status(404).json({
             msg: "file not found"
         })
     }
 }
 // sends the file information stored in the database
-async function getFileDetail(req, res){
+async function getFileDetail(req, res) {
     try {
         console.log("getFileDetail");
         const file = await FileModel.findById(req.params.fid);
@@ -85,45 +96,43 @@ async function getFileDetail(req, res){
         })
     }
 }
-async function makeFile(req, res){
+async function makeFile(req, res) {
     try {
         console.log("makeFile");
-        const fileName = req.body.name;
+        const fileName = req.body.file_name;
+
         const fileObj = await FileModel.create({
             name: fileName,
-            parent: req.body.parent,
+            parent_id: req.body.parent,
+            extension: path.extname(fileName).replace('.', '')
         });
-        fs.writeFile(fileObj.location, "", (err)=>{
-            if(err){
-                return res.status(500).json({
-                    msg: "creation failed"
-                });
-            }
-        });
+
         return res.status(201).json(
             fileObj
         );
     } catch (error) {
+        logger(error)
         return res.status(500).json({
             msg: "creation failed"
         });
     }
 }
-async function updateFile(req, res){
+async function updateFile(req, res) {
     try {
         console.log("updateFile")
-        if(req.body.fields){
+        if (req.body.fields) {
             await FileModel.findByIdAndUpdate(req.params.fid, req.body.fields);
         }
-        if(req.body.data){
+        if (req.body.data) {
             const file = await FileModel.findById(req.params.fid);
-            fs.writeFile(file.location, req.body.data, (err)=>{
-                if(err){
+            const filePath = path.join(process.cwd(), process.env.PROJECT_FILE_DEST, file.relPath)
+            fs.writeFile(filePath, req.body.data, (err) => {
+                if (err) {
                     return res.status(500).json({
                         msg: "creation failed"
                     });
                 }
-                else{
+                else {
                     return res.status(200).json({
                         msg: "updated successfully"
                     });
@@ -131,10 +140,11 @@ async function updateFile(req, res){
             })
         }
     } catch (error) {
-        return res.status(500).json({error: error});
+        logger(error)
+        return res.status(500).json({ error: error });
     }
 }
-async function removeFile(req, res){
+async function removeFile(req, res) {
     try {
         console.log("removeFile");
         const file = await FileModel.findById(req.params.fid);
@@ -143,27 +153,26 @@ async function removeFile(req, res){
             ans
         );
     } catch (error) {
-        return res.status(500).json({error: error});
+        return res.status(500).json({ error: error });
     }
 }
-async function uploadFile(req, res){
+async function uploadFile(req, res) {
     try {
         console.log("uploadFile")
-        return res.status(200).json(
-            req.body.fileObj
-        );
+        return res.status(201).json({
+            Message: "Uploaded Successfully"
+        });
     } catch (error) {
-        return res.status(500).json({error: error});
+        return res.status(500).json({ error: error });
     }
 }
-
 
 
 module.exports = {
     makeFile,
-    getFileData, 
+    getFileData,
     getFileDetail,
-    updateFile, 
+    updateFile,
     removeFile,
     uploadFile,
 

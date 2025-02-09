@@ -1,21 +1,8 @@
 const bcrypt = require('bcrypt');
-const { generateAccessToken, generateRefreshToken } = require("../jwt");
 const UserModel = require("../models/user");
+const logger = require("../utils/logger.js");
+const { setAuthCookies } = require('../utils/authUtils.js');
 
-const accessCookieSetting = {
-    domain: process.env.MODE !== "dev" ? "deepanshu.malaysingh.com": null,
-    maxAge: 60*60*1000,
-    secure: true,
-    sameSite: "none",
-    httpOnly: true,
-}
-const refreshCookieSetting = {
-    domain: process.env.MODE !== "dev" ? "deepanshu.malaysingh.com": null,
-    maxAge: 60*60*24*1000,
-    secure: true,
-    sameSite: "none",
-    httpOnly: true,
-}
 
 
 async function registerUser(req, res){
@@ -24,16 +11,14 @@ async function registerUser(req, res){
         const user = await UserModel.create(req.body);
         
         // Generating JWT tokens
-        const accessToken = generateAccessToken(user._id);
-        const refreshToken = generateRefreshToken(user._id);
+        setAuthCookies(res, user._id);
 
-        res.cookie("accessToken", accessToken, accessCookieSetting)
-        res.cookie("refreshToken", refreshToken, refreshCookieSetting)
-
+        // Saving session
         req.session.user = user;
 
         return res.status(201).json(user);
     } catch (error) {
+        logger(error)
         return res.status(500).json('User creation failed');
     }
 }
@@ -48,19 +33,16 @@ async function loginUser(req, res){
         }
 
         const user = await UserModel.findOne(
-            {email: req.body.email}
-        );
+            {email: req.body.email}, "+password"
+        ).lean();
 
         const result = await bcrypt.compare(req.body.password, user.password)
         if(result===true){
             
             // Generating JWT tokens
-            const accessToken = generateAccessToken(user._id);
-            const refreshToken = generateRefreshToken(user._id);
-            
-            res.cookie("accessToken", accessToken, accessCookieSetting)
-            res.cookie("refreshToken", refreshToken, refreshCookieSetting)
+            setAuthCookies(res, user._id);
 
+            // Saving session
             req.session.user = user;
             
             return res.status(200).json(user);
@@ -69,6 +51,7 @@ async function loginUser(req, res){
             return res.status(401).json('Incorrect Password');
         }
     } catch (error) {
+        logger(error)
         return res.status(404).json('User Not Found');
     }
 }
@@ -84,6 +67,7 @@ async function getSession(req, res){
             return res.status(404).json('No Session');
         }
     } catch (error) {
+        logger(error)
         return res.status(500).json('Error');
     }
 }

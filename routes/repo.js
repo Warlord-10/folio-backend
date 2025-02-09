@@ -1,11 +1,12 @@
 const express = require("express");
 
-const { makeFile, removeFile, getFolder, makeFolder, removeFolder, getFileData, getFileDetail, uploadFile, updateFile, updateFolder, testFunc } = require("../controllers/repo");
+const { makeFile, removeFile, getFolder, makeFolder, removeFolder, getFileData, getFileDetail, uploadFile, updateFile, updateFolder, getFile_v2 } = require("../controllers/repo");
 const {verifyRefreshTokenMiddleWare, verifyAccessTokenMiddleWare} = require("../middleware/auth");
 const { fileUploadMiddleware } = require("../middleware/multer");
 
 
 const router = express.Router();
+exports.router = router;
 router.use(verifyAccessTokenMiddleWare);
 
 router.post("/file", makeFile);
@@ -22,5 +23,6 @@ router.post("/folder", makeFolder);
 router.get("/folder/:fid", getFolder);
 router.patch("/folder/:fid", updateFolder);
 router.delete("/folder/:fid", removeFolder);
+
 
 module.exports = router;

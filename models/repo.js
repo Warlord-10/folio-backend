@@ -1,41 +1,46 @@
 const mongoose = require("mongoose");
 const path = require("path");
 const moment = require('moment-timezone');
-const { createFolder, removeFolder } = require("../fileManager");
+const { createFolder, removeFolder, createFile } = require("../utils/fileManager");
+const linguist = require('linguist-js');
 
 
 // File Schema
 const fileSchema = new mongoose.Schema({
-    name: { type: String, required: true },
-    parent: {type: mongoose.Schema.Types.ObjectId, ref: 'Folder'},
-    location: {type: String, default: null},
-  },
-  {timestamps:true}
-);
-fileSchema.pre('save', async function(next){
-  this.createdAt = moment().tz('Asia/Kolkata').toDate();
-  this.name = this.name.replace(/\s+/g,'_');
+  name: { type: String, required: true },
+  parent_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Folder' },
+  relPath: { type: String, default: null },
+  absPath: { type: String, default: null },
+  language: { type: String, default: null },
+  extension: { type: String, default: null },
+  size: { type: Number, default: 0 },
+}, { timestamps: true });
+
+fileSchema.pre('save', async function (next) {
+  // this.createdAt = moment().tz('Asia/Kolkata').toDate();
+  this.name = this.name.replace(/\s+/g, '_');
+
+  const parentFolderPath = await FolderModel.findById(this.parent_id);
+  this.relPath = path.join(parentFolderPath.relPath, this.name);
+  this.absPath = path.join(parentFolderPath.absPath, this.name);
+
+  const fileNames = [this.name];
+  const fileContent = [''];
+  const { files, languages, unknown } = await linguist(fileNames, { fileContent });
+
+  this.language = files.results[this.name]
   next();
 })
-// Adds the file Id to the folder.files
-fileSchema.post('save', async function(doc, next) {
-  const parentFolder = await FolderModel.findByIdAndUpdate(
-    doc.parent, 
-    { $push: {files: doc._id} }
-  );
-  fullPathOfCurrFile = path.join(`${parentFolder.relPath}`, `${doc.name}`);
-  await FileModel.findByIdAndUpdate(doc._id, {location: fullPathOfCurrFile}, {new: true})
-  doc.location = fullPathOfCurrFile
-  next();
-});
-fileSchema.post('deleteOne', { document: true, query: false }, async function(doc, next) {
-  await FolderModel.findByIdAndUpdate(
-    doc.parent,
-    { $pull: {files: doc._id} } 
-  );
 
-  // remove the file from the storage
-  removeFolder(doc.location);
+fileSchema.post('save', async function (doc, next) {
+  const fullPathOfFile = path.join(process.cwd(), process.env.PROJECT_FILE_DEST, doc.relPath);
+  createFile(fullPathOfFile);
+  next();
+})
+
+fileSchema.post('deleteOne', { document: true, query: false }, async function (doc, next) {
+  const fullPathOfFile = path.join(process.cwd(), process.env.PROJECT_FILE_DEST, doc.relPath);
+  removeFolder(fullPathOfFile);
   next();
 })
 const FileModel = mongoose.model('File', fileSchema);
@@ -44,61 +49,56 @@ const FileModel = mongoose.model('File', fileSchema);
 
 // Folder Schema
 const folderSchema = new mongoose.Schema({
-    name: { type: String, required: true },
-    parent: {type: mongoose.Schema.Types.ObjectId, ref: 'Folder', default: null},
-    files: [{ type: mongoose.Schema.Types.ObjectId, ref: 'File' }],
-    folders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Folder' }],
-    relPath: {type: String},
-  }, 
-  {timestamps:true}
-);
-folderSchema.pre('save', async function(next){
-  this.createdAt = moment().tz('Asia/Kolkata').toDate();
-  this.name = this.name.replace(/\s+/g,'_');
-  next();
-})
-// Adds the folder to the parent list
-folderSchema.post('save', async function(doc, next){
-  if(doc.parent !== null){
-    const parentFolder = await FolderModel.findByIdAndUpdate(
-      doc.parent, 
-      { $push: { folders: doc._id } }
-    );
+  name: { type: String, required: true },
+  parent_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Folder', default: null },
+  relPath: { type: String, default: null },
+  absPath: { type: String, default: null },
+}, { timestamps: true });
 
-    // take the parent's path and add yours on it
-    fullPathOfCurrFolder = path.join(`${parentFolder.relPath}`, `${doc.name}`);
-    await FolderModel.findByIdAndUpdate(doc._id, {relPath: fullPathOfCurrFolder});
+folderSchema.pre('save', async function (next) {
+  // this.createdAt = moment().tz('Asia/Kolkata').toDate();
+  this.name = this.name.replace(/\s+/g, '_');
+
+  // checking for null because each project has a logical root folder
+  // which does not have any physical location
+  if (this.parent_id !== null) {
+    const parentFolderPath = await FolderModel.findById(this.parent_id);
+    this.relPath = path.join(parentFolderPath.relPath, this.name);
+    this.absPath = path.join(parentFolderPath.absPath, this.name);
+
+    fullPathOfCurrFolder = path.join(process.cwd(), process.env.PROJECT_FILE_DEST, this.relPath);
+
     createFolder(fullPathOfCurrFolder);
   }
   next();
-});
-// Remove the files and folders from the folder (cascade deletion)
-folderSchema.pre('deleteOne', {document:true, query:false}, async function (next) {
-  // files = await FileModel.deleteMany({ _id: { $in: this.files } });
-  for (let fileId of this.files) {
-    const temp = await FileModel.findById(fileId);
-    await temp.deleteOne();
+})
+
+folderSchema.pre('deleteOne', { document: true, query: false }, async function (next) {
+  const folderId = this._id;
+
+  // Find and delete child files
+  const childFiles = await FileModel.find({ parent_id: folderId });
+  for (const file of childFiles) {
+    await file.deleteOne(); // Triggers pre and post hooks for FileModel
   }
-  for (let folderId of this.folders) {
-    const temp = await FolderModel.findById(folderId);
-    await temp.deleteOne();
+
+  // Find and delete child folders
+  const childFolders = await FolderModel.find({ parent_id: folderId });
+  for (const folder of childFolders) {
+    await folder.deleteOne(); // Triggers pre and post hooks for FolderModel
   }
+
   next();
 });
+
 // Remove from file Id from the parent's list
-folderSchema.post('deleteOne', {document:true, query:false}, async function(doc, next) {
-  if(doc.parent){
-    await FolderModel.findByIdAndUpdate(
-      doc.parent,
-      { $pull: {folders: doc._id} }
-    );
-    
-    // remove the curr folder from the storage
-    removeFolder(doc.relPath);
+folderSchema.post('deleteOne', { document: true, query: false }, async function (doc, next) {
+  if (doc.parent_id) {
+    fullPathOfCurrFolder = path.join(process.cwd(), process.env.PROJECT_FILE_DEST, doc.relPath);
+    removeFolder(fullPathOfCurrFolder);
   }
   next();
 });
 const FolderModel = mongoose.model('Folder', folderSchema);
 
-module.exports = {FileModel, FolderModel};
-  
+module.exports = { FileModel, FolderModel };

@@ -11,7 +11,7 @@ router.get("/", getAllUser);    // for testing only
 router.delete("/", delAllUser); // for testing only
 
 router.get("/s/:uid", verifyAccessTokenMiddleWare, getUserById);
-router.patch("/s/:uid", verifyAccessTokenMiddleWare, avatarUploadMiddleware.single('file'), updateUserById);
+router.patch("/s/:uid", verifyAccessTokenMiddleWare, avatarUploadMiddleware.single('avatar_path'), updateUserById);
 router.delete("/s/:uid", verifyAccessTokenMiddleWare, delUserById);
 
 router.get("/page/:uid", getUserProfilePage);

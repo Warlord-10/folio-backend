@@ -2,4 +2,6 @@
 /db_files
 /bundles
 /public
+/projects_bundles
+/user_files
 .env

@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const bcrypt = require('bcrypt');
 const path = require("path");
-const { createFolder, removeFolder } = require("../fileManager");
+const { createFolder, removeFolder } = require("../utils/fileManager");
 
 
 const userSchema = new mongoose.Schema({
@@ -10,8 +10,9 @@ const userSchema = new mongoose.Schema({
     required: [true, "Name is required"],
   },
   password: {
-    type: String, 
+    type: String,
     required: [true, "Password is required"],
+    select: false,
   },
   email: {
     type: String,
@@ -28,41 +29,51 @@ const userSchema = new mongoose.Schema({
     },
   },
 
-  about: {type: String},
-  avatar: {type: String},
-  projects : [{ type: mongoose.Schema.Types.ObjectId, ref: 'Project' }],
-  userPageProject: {type: String, default: null}
-});
+  about: { type: String },
+  avatar_path: { type: String },
+  user_portfolio: { type: String, default: null }
+}, {
+  timestamps: true, 
+  toJSON: {
+    transform: function (doc, ret) {
+      delete ret.password; // Remove password field when converting to JSON
+      return ret;
+    }
+  }
+}
+);
 
 
 
-userSchema.pre('save', async function(next){
+userSchema.pre('save', async function (next) {
   // hashes the password
   this.password = await bcrypt.hash(this.password, 4);
   next();
 })
-userSchema.post('save', async function(doc, next){
+userSchema.post('save', async function (doc, next) {
   // creates the user folder in the storage
-  const userRootFolder = path.join(__dirname, ".." ,'db_files',`${doc._id}`)
-  createFolder(path.join(userRootFolder, "__user"));
-  // createFolder(path.join(__dirname, ".." ,'public',`${doc._id}`))
+  createFolder(path.join(process.cwd(), process.env.USER_FILE_DEST, doc._id.toHexString()));
+  createFolder(path.join(process.cwd(), process.env.PROJECT_FILE_DEST, doc._id.toHexString()));
+  createFolder(path.join(process.cwd(), process.env.BUNDLED_PROJECT_DEST, doc._id.toHexString()))
+  next()
 })
 
 
-userSchema.pre('deleteOne', {document:true, query:false}, async function (next) {
+userSchema.pre('deleteOne', { document: true, query: false }, async function (next) {
   // Remove associated projects, and let the cascading deletion handle the rest
   const ProjectModel = require("./project");
-  for(let projectId of this.projects){
+  for (let projectId of this.projects) {
     const temp = await ProjectModel.findById(projectId);
     await temp.deleteOne()
   }
   next();
 });
-userSchema.post('deleteOne', {document:true, query:false}, async function(doc, next){
+userSchema.post('deleteOne', { document: true, query: false }, async function (doc, next) {
   // removes the user folder from the storage
-  const userRootFolder = path.join(__dirname, ".." ,'db_files',`${doc._id}`)
-  removeFolder(userRootFolder);
-  // removeFolder(path.join(__dirname, ".." ,'public',`${doc._id}`))
+  removeFolder(path.join(process.cwd(), process.env.USER_FILE_DEST, doc._id.toHexString()));
+  removeFolder(path.join(process.cwd(), process.env.PROJECT_FILE_DEST, doc._id.toHexString()));
+  removeFolder(path.join(process.cwd(), process.env.BUNDLED_PROJECT_DEST, doc._id.toHexString()))
+  next();
 })
 
 const UserModel = mongoose.model("User", userSchema);

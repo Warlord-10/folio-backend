@@ -1,4 +1,5 @@
-const { verifyAccessToken, verifyRefreshToken, generateAccessToken } = require("../jwt");
+const { setAuthCookies } = require("../utils/authUtils");
+const { verifyAccessToken, verifyRefreshToken } = require("../utils/jwt");
 
 function verifyRefreshTokenMiddleWare(req, res, next){
     try {
@@ -19,27 +20,19 @@ function verifyAccessTokenMiddleWare(req, res, next){
 
         req.user = decoded_access_token;
         next();
-    } catch (error) {
 
+    } catch (error) {
         // Refresh Token Exists
         if(req.cookies.refreshToken !== null && req.cookies.refreshToken !== undefined){
             const decoded_refresh_token = verifyRefreshToken(req.cookies.refreshToken);
-            const new_access_token = generateAccessToken(decoded_refresh_token.userId);
 
-            // Setting Cookies
-            res.cookie("accessToken", new_access_token, {
-                domain: process.env.MODE !== "dev" ? "deepanshu.malaysingh.com": null,
-                maxAge: 60*60*1000,
-                secure: true,
-                sameSite: "none",
-                httpOnly: true,
-            }); 
+            setAuthCookies(res, decoded_refresh_token.userId);
 
-            req.user = new_access_token;
+            req.user = decoded_refresh_token;
         } 
         // No Refresh Token
         else{
-            req.user = null;
+            req.user = {userId: null};
         }
 
         next();

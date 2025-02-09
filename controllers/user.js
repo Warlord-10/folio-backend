@@ -1,4 +1,5 @@
 const UserModel = require("../models/user");
+const path = require("path");
 
 // For admin task only
 async function getAllUser(req, res){
@@ -30,11 +31,12 @@ async function delAllUser(req, res){
 async function getUserById(req, res){
     console.log("getUserById");
     try {
-        const data = await UserModel.findById(req.params.uid, "-password").populate("projects");
-        if(req.user && req.user.userId == req.params.uid){
-            return res.status(200).json({data, PERMISSION:"OWNER"});
-        }
-        return res.status(200).json({data, PERMISSION:"VISITOR"});
+        const data = await UserModel.findById(req.params.uid, "-password");
+        return res.status(200).json({
+            data: data,
+            permission: req.user.userId == req.params.uid ? "OWNER" : "VISITOR"
+        });
+        
     } catch (error) {
         console.log(error)
         return res.status(500).json(error);
@@ -61,7 +63,7 @@ async function updateUserById(req, res){
     try {
         console.log("updateUserById");
         if(req.user && req.user.userId == req.params.uid){
-            const data = await UserModel.findByIdAndUpdate(req.user.userId, req.body, {new: true}).populate("projects");
+            const data = await UserModel.findByIdAndUpdate(req.user.userId, req.body, {new: true}).select("-password");
             return res.status(200).json(
                 data
             )
@@ -79,10 +81,13 @@ async function getUserProfilePage(req, res){
     try {
         console.log("getUserProfilePage");
         const data = await UserModel.findById(req.params.uid);
-        if(data.userPageProject === "undefined" || data.userPageProject === "null"){
+        if(data.user_portfolio === "undefined" || data.user_portfolio === "null"){
             return res.status(404).json("No Folio Set");
         }
+
         const inputDir = `${data._id}/bundle.js`
+        console.log(inputDir);
+
         return res.status(200).json(inputDir)
     } catch (error) {
         return res.status(404).json("Error Occured");

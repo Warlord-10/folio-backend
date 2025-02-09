@@ -1,26 +1,26 @@
 const fs = require("fs")
 
-const createFolder = (relPath) => {
+const createFolder = (absPath) => {
     try {
-        if (fs.existsSync(relPath)) {
+        if (fs.existsSync(absPath)) {
             return 0;
         }
         else {
-            fs.mkdirSync(relPath, {recursive: true});
+            fs.mkdirSync(absPath, {recursive: true});
         }
     } catch (error) {
         return error;
     }
 }
+
 const removeFolder = (relPath) => {
     fs.rmSync(relPath, { recursive: true, force: true });
 }
+
 const createFile = (relPath) => {
-    try {
-        fs.writeFile(relPath, "", ()=>{})
-    } catch (error) {
-        
-    }
+    fs.writeFile(relPath, "", (err)=>{
+        if(err) return err
+    });
 }
 
-module.exports = { createFolder, removeFolder }
+module.exports = { createFolder, removeFolder, createFile }

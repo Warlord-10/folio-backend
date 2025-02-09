@@ -1,39 +1,113 @@
-const HtmlWebpackPlugin = require("html-webpack-plugin");
+const path = require('path');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 
-module.exports = {
-  module: {
-    rules: [
-      {
-        test: /\.svg$/,
-        use: "svg-inline-loader",
-      },
-      {
-        test: /\.css$/i,
-        use: ["style-loader", "css-loader"],
-      },
-      {
-        test: /\.(jsx|js)$/,
-        exclude: /node_modules/,
-        use: {
-          loader: 'babel-loader',
-          options: {
-            presets: [
-              ['@babel/preset-env', { targets: "defaults" }],
-              '@babel/preset-react'
-            ]
+
+
+module.exports = (entry, output) => {
+
+  const config = {
+    entry: [
+      path.join(process.cwd(), process.env.PROJECT_FILE_DEST, entry, "index.jsx")
+    ],
+    output: {
+      path: path.join(process.cwd(), process.env.BUNDLED_PROJECT_DEST, output),
+      filename: '[name].bundle.js'
+    },
+    module: {
+      rules: [
+        {
+          test: /\.(js|jsx)$/,
+          use: 'babel-loader',
+          exclude: /node_modules/
+        },
+        {
+          test: /\.css$/,
+          include: path.join(process.cwd(), process.env.PROJECT_FILE_DEST, entry),
+          use: [
+            'style-loader',
+            {
+              loader: 'css-loader',
+              options: {
+                importLoaders: 1
+              }
+            },
+            'postcss-loader'
+          ]
+        },
+        {
+          test: /\.ts(x)?$/,
+          loader: 'ts-loader',
+          exclude: /node_modules/
+        },
+        {
+          test: /\.svg$/,
+          use: 'file-loader'
+        },
+        {
+          test: /\.png$/,
+          use: [
+            {
+              loader: 'url-loader',
+              options: {
+                mimetype: 'image/png'
+              }
+            }
+          ]
+        }
+      ]
+    },
+    // devServer: {
+    //   'static': {
+    //     directory: './dist'
+    //   }
+    // },
+    // resolve: {
+    //   extensions: [
+    //     '.tsx',
+    //     '.ts',
+    //     '.js'
+    //   ],
+    //   alias: {
+    //     'react-dom': '@hot-loader/react-dom'
+    //   }
+    // },
+    plugins: [
+      new HtmlWebpackPlugin({
+        // template: "template.html",
+        templateContent: `
+          <!DOCTYPE html>
+          <html lang="en">
+          <base href="${process.env.DOMAIN?"https://"+process.env.DOMAIN:"http://localhost"}:3005/bundle/${output}/">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Folio</title>
+          </head>
+
+          <body>
+              <div id="userPageRoot"></div>
+          </body>
+
+          </html>
+        `
+      }),
+      new CleanWebpackPlugin()
+    ],
+    optimization: {
+      runtimeChunk: 'single',
+      splitChunks: {
+        cacheGroups: {
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendors',
+            chunks: 'all'
           }
         }
-      },
-    ],
-  },
-  output: {
-    filename: "bundle.js",
-    libraryTarget: 'umd',
-  },
-  plugins: [
-    new HtmlWebpackPlugin({
-      template: "template.html"
-    })
-  ],
-  mode: "production",
+      }
+    },
+    mode: "production",
+  };
+
+  return config;
 };

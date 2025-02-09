@@ -109,7 +109,7 @@ async function addLike(req, res) {
     logInfo("addLike")
     try {
         const { portfolioId } = req.params;
-        const userId = req.user.userId;
+        const userId = req.user?.userId;
 
         // Create a new like
         await LikeModel.create({
@@ -136,7 +136,7 @@ async function removeLike(req, res) {
     logInfo("removeLike");
     try {
         const { portfolioId } = req.params;
-        const userId = req.user.userId;
+        const userId = req.user?.userId;
 
         // Find and remove the like
         await LikeModel.findOneAndDelete({

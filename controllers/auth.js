@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const UserModel = require("../models/user");
 const { logError, logInfo } = require("../utils/logger.js");
 const { setAuthCookies } = require("../utils/authUtils.js");
+const { resetCookieSetting } = require('../middleware/cookieConfig.js');
 
 async function registerUser(req, res) {
     try {
@@ -48,7 +49,6 @@ async function loginUser(req, res) {
 
         // Check if user exists
         const user = await UserModel.findOne({ email }, "+password").lean();
-        console.log(user)
         if (!user) {
             return res.status(404).send("User not found");
         }
@@ -94,8 +94,8 @@ async function logoutUser(req, res) {
     try {
         logInfo("logoutUser");
 
-        res.clearCookie("accessToken");
-        res.clearCookie("refreshToken");
+        res.cookie("accessToken", null, resetCookieSetting);
+        res.cookie("refreshToken", null, resetCookieSetting);
 
         req.session.destroy((err) => {
             if (err) {

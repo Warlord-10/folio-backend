@@ -4,7 +4,7 @@ const resetColor = '\x1b[0m';
 const yellowColor = "\x1b[33m"
 
 const args = process.argv;
-const isVerbose = args.slice(2).includes('verbose');
+const isVerbose = args.slice(2).includes('verbose') || process.env.MODE == "dev";
 console.log(args, isVerbose)
 
 function logInfo(log){

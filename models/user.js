@@ -30,11 +30,11 @@ const userSchema = new mongoose.Schema({
     },
   },
 
-  about: { type: String },
-  avatar_path: { type: String },
+  about: { type: String, default: null },
+  avatar_path: { type: String, default: null },
   user_portfolio: { type: String, default: null }
 }, {
-  timestamps: true, 
+  timestamps: true,
   toJSON: {
     transform: function (doc, ret) {
       delete ret.password; // Remove password field when converting to JSON

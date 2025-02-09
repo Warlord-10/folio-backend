@@ -47,13 +47,18 @@ async function delUserById(req, res){
         logInfo("delUserById");
         const data = await UserModel.findById(req.user.userId);
         if(req.user && req.user.userId == req.params.uid){
+
             await data.deleteOne();
-            return res.status(200).json(
-                data
+
+            res.clearCookie("accessToken");
+            res.clearCookie("refreshToken");
+
+            return res.status(200).send(
+                "Deleted"
             );
         }
         else{
-            return res.status(500).json("Permission Denied");
+            return res.status(500).send("Permission Denied");
         }
     } catch (error) {
         return res.status(500).json(error);

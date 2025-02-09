@@ -20,12 +20,8 @@ async function registerUser(req, res) {
             return res.status(409).send("Email already in use");
         }
 
-        // Hash the password
-        const saltRounds = 10;
-        const hashedPassword = await bcrypt.hash(password, saltRounds);
-
         // Create new user
-        const user = await UserModel.create({ email, name, password: hashedPassword });
+        const user = await UserModel.create({ email, name, password });
 
         // Generate JWT tokens & set auth cookies
         setAuthCookies(res, user._id);
@@ -51,7 +47,8 @@ async function loginUser(req, res) {
         }
 
         // Check if user exists
-        const user = await UserModel.findOne({ email }).select("+password").lean();
+        const user = await UserModel.findOne({ email }, "+password").lean();
+        console.log(user)
         if (!user) {
             return res.status(404).send("User not found");
         }

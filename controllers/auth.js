@@ -1,87 +1,116 @@
 const bcrypt = require('bcrypt');
 const UserModel = require("../models/user");
-const {logError, logInfo} = require("../utils/logger.js");
-const { setAuthCookies } = require('../utils/authUtils.js');
+const { logError, logInfo } = require("../utils/logger.js");
+const { setAuthCookies } = require("../utils/authUtils.js");
 
-
-
-async function registerUser(req, res){
+async function registerUser(req, res) {
     try {
         logInfo("registerUser");
-        const user = await UserModel.create(req.body);
-        
-        // Generating JWT tokens
+
+        const { email, password, name } = req.body;
+
+        // Validate request body
+        if (!email || !password || !name) {
+            return res.status(400).send("All fields are required");
+        }
+
+        // Check if user already exists
+        const existingUser = await UserModel.findOne({ email });
+        if (existingUser) {
+            return res.status(409).send("Email already in use");
+        }
+
+        // Hash the password
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+        // Create new user
+        const user = await UserModel.create({ email, name, password: hashedPassword });
+
+        // Generate JWT tokens & set auth cookies
         setAuthCookies(res, user._id);
 
-        // Saving session
-        req.session.user = user;
+        // Save user session
+        req.session.user = { _id: user._id, email: user.email, name: user.name };
 
-        return res.status(201).json(user);
+        return res.status(201).json({ message: "User registered successfully", user: user });
     } catch (error) {
-        logError(error)
-        return res.status(500).json('User creation failed');
+        logError(error);
+        return res.status(500).send("User creation failed");
     }
 }
 
-async function loginUser(req, res){
+async function loginUser(req, res) {
     try {
         logInfo("loginUser");
 
-        // Look into the session
-        if(req.session.user){
-            return res.status(200).json(req.session.user);
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).send("Email and password are required");
         }
 
-        const user = await UserModel.findOne(
-            {email: req.body.email}, "+password"
-        ).lean();
-
-        const result = await bcrypt.compare(req.body.password, user.password)
-        if(result===true){
-            
-            // Generating JWT tokens
-            setAuthCookies(res, user._id);
-
-            // Saving session
-            req.session.user = user;
-            
-            return res.status(200).json(user);
+        // Check if user exists
+        const user = await UserModel.findOne({ email }).select("+password").lean();
+        if (!user) {
+            return res.status(404).send("User not found");
         }
-        else{
-            return res.status(401).json('Incorrect Password');
+
+        // Verify password
+        const passwordMatch = await bcrypt.compare(password, user.password);
+        if (!passwordMatch) {
+            return res.status(401).send("Incorrect password");
         }
+
+        // Remove password before saving to session
+        const userWithoutPassword = { _id: user._id, email: user.email, name: user.name };
+
+        // Generate JWT tokens & set auth cookies
+        setAuthCookies(res, user._id);
+
+        // Save session
+        req.session.user = userWithoutPassword;
+
+        return res.status(200).json({ message: "Login successful", user: user });
     } catch (error) {
-        logError(error)
-        return res.status(404).json('User Not Found');
+        logError(error);
+        return res.status(500).send("Login failed");
     }
 }
 
-
-async function getSession(req, res){
+async function getSession(req, res) {
     try {
         logInfo("getSession");
-        if(req.session.user){
-            return res.status(200).json(req.session.user);
-        }
-        else{
-            return res.status(404).json('No Session');
+
+        if (req.session?.user) {
+            return res.status(200).json({ user: req.session.user });
+        } else {
+            return res.status(401).send("No active session");
         }
     } catch (error) {
-        logError(error)
-        return res.status(500).json('Error');
+        logError(error);
+        return res.status(500).send("Error fetching session");
     }
 }
 
-
-async function logoutUser(req, res){
+async function logoutUser(req, res) {
     try {
         logInfo("logoutUser");
+
         res.clearCookie("accessToken");
         res.clearCookie("refreshToken");
-        req.session.destroy();
-        return res.status(200).json('Logout Successful');
+
+        req.session.destroy((err) => {
+            if (err) {
+                logError(err);
+                return res.status(500).send("Logout failed");
+            }
+
+            return res.status(200).json({ message: "Logout successful" });
+        });
     } catch (error) {
-        return res.status(500).json('Logout Failed');
+        logError(error);
+        return res.status(500).send("Logout error");
     }
 }
 
@@ -90,4 +119,4 @@ module.exports = {
     loginUser,
     getSession,
     logoutUser,
-}
+};

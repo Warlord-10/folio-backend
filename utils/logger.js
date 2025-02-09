@@ -4,7 +4,8 @@ const resetColor = '\x1b[0m';
 const yellowColor = "\x1b[33m"
 
 const args = process.argv;
-const isVerbose = args.includes("--verbose");
+const isVerbose = args.slice(2).includes('verbose');
+console.log(args, isVerbose)
 
 function logInfo(log){
     if(isVerbose) console.log(`${greenColor}[INFO]${yellowColor}[${new Date()}]:${resetColor}`, log);

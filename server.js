@@ -25,7 +25,7 @@ const { createFolder } = require('./utils/fileManager.js');
 createFolder(process.env.BUNDLED_PROJECT_DEST)  // It stores project bundles of each user
 createFolder(process.env.USER_FILE_DEST)  // It stores the user files
 createFolder(process.env.PROJECT_FILE_DEST) // It stores the project files of the projects 
-const app = express();  
+const app = express();
 
 // DB connect
 startDatabase(process.env.DB_URL)
@@ -37,10 +37,10 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(cors({
   origin: [
-    "http://localhost:3000", 
-    "https://folio-fullstack.vercel.app", 
-    "https://foli0.vercel.app", 
-    "https://folio-git-main-warlord-10s-projects.vercel.app", 
+    "http://localhost:3000",
+    "https://folio-fullstack.vercel.app",
+    "https://foli0.vercel.app",
+    "https://folio-git-main-warlord-10s-projects.vercel.app",
     "https://folio-warlord-10s-projects.vercel.app",
   ],  // allows request from 3000, true/* indicate all origin
   methods: ["GET", "PATCH", "POST", "DELETE", "PUT"],
@@ -82,24 +82,40 @@ app.get("/test", (req, res) => {
 })
 
 
-if(process.env.MODE == "dev"){
-  const server = app.listen(3005, ()=>{
-    console.log("server running: " + Date.now());
+if (process.env.MODE == "dev") {
+  const server = app.listen(process.env.PORT, () => {
+    console.log("server running in DEV: " + Date.now());
   })
   const host = server.address();
   console.log(host)
+
+  process.on("SIGINT", () => {
+    console.log("Shutting down server...");
+    server.close(() => {
+      console.log("Server closed.");
+      process.exit(0);
+    });
+  });
 }
-else{
+else {
   const options = {
     key: fs.readFileSync(`/etc/letsencrypt/live/${process.env.DOMAIN}/privkey.pem`),
     cert: fs.readFileSync(`/etc/letsencrypt/live/${process.env.DOMAIN}/fullchain.pem`)
   };
   const httpsServer = https.createServer(options, app)
-  httpsServer.listen(process.env.PORT, ()=>{
-    console.log("server running: " + Date.now());
+  httpsServer.listen(process.env.PORT, () => {
+    console.log("server running in PROD: " + Date.now());
   })
   const address = httpsServer.address();
   console.log(address)
+
+  process.on("SIGINT", () => {
+    console.log("Shutting down server...");
+    httpsServer.close(() => {
+        console.log("Server closed.");
+        process.exit(0);
+    });
+});
 }
 
 module.exports = app;

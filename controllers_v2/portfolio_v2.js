@@ -1,9 +1,9 @@
 const PortfolioModel = require("../models/portfolio.js");
 const LikeModel = require('../models/likes.js');
-const logger = require("../utils/logger.js");
+const {logError, logInfo} = require("../utils/logger.js");
 
 // async function fetchAllPortfolios(req, res) {
-//     console.log("fetchAllPortfolios");
+//     logger("fetchAllPortfolios");
 //     try {
 //         const userId = req.user?.userId || null;
 //         const page = parseInt(req.query.page) || 1;
@@ -45,7 +45,7 @@ const logger = require("../utils/logger.js");
 
 
 async function fetchAllPortfolios(req, res) {
-    console.log("fetchAllPortfolios");
+    logInfo("fetchAllPortfolios");
     try {
         const userId = req.user?.userId || null; // Assuming user's ID is available in req.user
         const page = parseInt(req.query.page) || 1;
@@ -97,7 +97,7 @@ async function fetchAllPortfolios(req, res) {
         });
 
     } catch (error) {
-        logger(error);
+        LogError(error);
         return res.status(500).json({ message: "Error fetching portfolios" });
     }
 }
@@ -106,7 +106,7 @@ async function fetchAllPortfolios(req, res) {
 
 // Add a like
 async function addLike(req, res) {
-    console.log("addLike")
+    logInfo("addLike")
     try {
         const { portfolioId } = req.params;
         const userId = req.user.userId;
@@ -126,14 +126,14 @@ async function addLike(req, res) {
 
         res.status(200).json({ message: 'Portfolio liked successfully', totalLikes: portfolioData.likes });
     } catch (error) {
-        logger(error);
+        logError(error);
         res.status(500).json({ message: 'Error adding like' });
     }
 }
 
 // Remove a like
 async function removeLike(req, res) {
-    console.log("removeLike");
+    logInfo("removeLike");
     try {
         const { portfolioId } = req.params;
         const userId = req.user.userId;
@@ -153,7 +153,7 @@ async function removeLike(req, res) {
 
         res.status(200).json({ message: 'Portfolio unliked successfully', totalLikes: portfolioData.likes });
     } catch (error) {
-        logger(error);
+        logError(error);
         res.status(500).json({ message: 'Error removing like' });
     }
 }

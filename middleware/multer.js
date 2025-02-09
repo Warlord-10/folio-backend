@@ -3,6 +3,7 @@ const path = require("path");
 const { FileModel } = require("../models/repo");
 const ProjectModel = require("../models/project");
 const { createFolder } = require("../utils/fileManager");
+const {logError, logInfo} = require("../utils/logger.js");
 
 
 const fileFilter = (req, file, cb) => {
@@ -28,7 +29,7 @@ const fileUploadMiddleware = multer({storage: multer.diskStorage({
       return cb(null, path.join(process.cwd(), process.env.PROJECT_FILE_DEST, filePath))
 
     } catch (error) {
-      console.log(error);
+      logError(error);
     }
   },
   filename: function (req, file, cb) {
@@ -44,7 +45,7 @@ const avatarUploadMiddleware = multer({storage: multer.diskStorage({
       const fullPath = path.join(process.cwd(), process.env.USER_FILE_DEST, `${req.params.uid}`)
       return cb(null, fullPath);
     } catch (error) {
-      console.log(error);
+      logError(error);
     }
   },
   filename: function (req, file, cb) {
@@ -52,7 +53,7 @@ const avatarUploadMiddleware = multer({storage: multer.diskStorage({
       req.body.avatar_path = `${req.params.uid}/avatar.jpeg`
       return cb(null, "avatar.jpeg")
     } catch (error) {
-      console.log(error);
+      logError(error);
     }  
   }
 }),fileFilter: fileFilter})
@@ -68,7 +69,7 @@ const bannerUploadMiddleware = multer({storage: multer.diskStorage({
       return cb(null, fullPath)
 
     } catch (error) {
-      console.log(error);
+      logError(error);
     }
   },
   filename: function(req, file, cb){

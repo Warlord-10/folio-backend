@@ -1,11 +1,11 @@
 const { FileModel, FolderModel } = require("../models/repo");
 const fs = require('fs');
-const logger = require("../utils/logger.js");
 const path = require('path');
+const {logError, logInfo} = require("../utils/logger.js");
 
 async function getFolder(req, res) {
     try {
-        console.log("getFolder");
+        logInfo("getFolder");
         const data = await FolderModel.findById(req.params.fid);
 
         const folder = await FolderModel.find({
@@ -27,7 +27,7 @@ async function getFolder(req, res) {
 }
 async function makeFolder(req, res) {
     try {
-        console.log("makeFolder", req.body);
+        logInfo("makeFolder", req.body);
         const folder = await FolderModel.create({
             name: req.body.folder_name,
             parent_id: req.body.parent
@@ -36,7 +36,7 @@ async function makeFolder(req, res) {
             folder
         );
     } catch (error) {
-        logger(error)
+        logError(error)
         return res.status(500).json({
             msg: "Folder not created"
         });
@@ -44,7 +44,7 @@ async function makeFolder(req, res) {
 }
 async function updateFolder(req, res) {
     try {
-        console.log("updateFolder");
+        logInfo("updateFolder");
         const folder = await FolderModel.findByIdAndUpdate(req.params.fid, req.body, { new: true });
         return res.status(200).json(
             folder
@@ -56,7 +56,7 @@ async function updateFolder(req, res) {
 
 async function removeFolder(req, res) {
     try {
-        console.log("removeFolder");
+        logInfo("removeFolder");
         const folder = await FolderModel.findById(req.params.fid);
         const ans = await folder.deleteOne();
         return res.status(200).json(
@@ -71,12 +71,12 @@ async function removeFolder(req, res) {
 // reads the file and sends its content
 async function getFileData(req, res) {
     try {
-        console.log("getFileData");
+        logInfo("getFileData");
         const file = await FileModel.findById(req.params.fid);
         const filePath = path.join(process.cwd(), process.env.PROJECT_FILE_DEST, file.relPath)
         return res.sendFile(filePath);
     } catch (error) {
-        logger(error)
+        logError(error)
         return res.status(404).json({
             msg: "file not found"
         })
@@ -85,7 +85,7 @@ async function getFileData(req, res) {
 // sends the file information stored in the database
 async function getFileDetail(req, res) {
     try {
-        console.log("getFileDetail");
+        logInfo("getFileDetail");
         const file = await FileModel.findById(req.params.fid);
         return res.status(200).json(
             file
@@ -98,7 +98,7 @@ async function getFileDetail(req, res) {
 }
 async function makeFile(req, res) {
     try {
-        console.log("makeFile");
+        logInfo("makeFile");
         const fileName = req.body.file_name;
 
         const fileObj = await FileModel.create({
@@ -111,7 +111,7 @@ async function makeFile(req, res) {
             fileObj
         );
     } catch (error) {
-        logger(error)
+        logError(error)
         return res.status(500).json({
             msg: "creation failed"
         });
@@ -119,7 +119,7 @@ async function makeFile(req, res) {
 }
 async function updateFile(req, res) {
     try {
-        console.log("updateFile")
+        logInfo("updateFile")
         if (req.body.fields) {
             await FileModel.findByIdAndUpdate(req.params.fid, req.body.fields);
         }
@@ -140,13 +140,13 @@ async function updateFile(req, res) {
             })
         }
     } catch (error) {
-        logger(error)
+        logError(error)
         return res.status(500).json({ error: error });
     }
 }
 async function removeFile(req, res) {
     try {
-        console.log("removeFile");
+        logInfo("removeFile");
         const file = await FileModel.findById(req.params.fid);
         const ans = await file.deleteOne();
         return res.status(200).json(
@@ -158,7 +158,7 @@ async function removeFile(req, res) {
 }
 async function uploadFile(req, res) {
     try {
-        console.log("uploadFile")
+        logInfo("uploadFile")
         return res.status(201).json({
             Message: "Uploaded Successfully"
         });

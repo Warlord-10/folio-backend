@@ -5,13 +5,13 @@ const PortfolioModel = require("../models/portfolio.js")
 
 const webpackConfig = require('../webpack.config.js');
 const webpack = require('webpack');
-const logger = require("../utils/logger.js")
+const {logError, logInfo} = require("../utils/logger.js");
 
 
 // Use for getting the overview of all the projects of a user
 async function getUserProjects(req, res) {
     try {
-        console.log("getUserProjects")
+        logInfo("getUserProjects")
         const data = await ProjectModel.find({ owner_id: req.params.uid });
 
         return res.status(200).json({
@@ -19,7 +19,7 @@ async function getUserProjects(req, res) {
             permission: req.user.userId == req.params.uid ? "OWNER" : "VISITOR"
         });
     } catch (error) {
-        logger(error)
+        logError(error)
         return res.status(404).json(error);
     }
 }
@@ -34,7 +34,7 @@ async function delAllProjects(req, res) {
             data
         });
     } catch (error) {
-        logger(error)
+        logError(error)
         return res.status(500).json({ error: 'Error' });
     }
 }
@@ -45,7 +45,7 @@ async function delAllProjects(req, res) {
 // Use for getting the detail view of a project
 async function getProjectById(req, res) {
     try {
-        console.log("getProjectById");
+        logInfo("getProjectById");
         const data = await ProjectModel.findById(req.params.pid).populate("owner_id");
 
         return res.status(200).json({
@@ -53,7 +53,7 @@ async function getProjectById(req, res) {
             permission: req.user.userId == data.owner_id._id ? "OWNER" : "VISITOR"
         });
     } catch (error) {
-        logger(error)
+        logError(error)
         return res.status(404).json('Project Not Found');
     }
 }
@@ -62,7 +62,7 @@ async function getProjectById(req, res) {
 // for creating a project
 async function createProject(req, res) {
     try {
-        console.log("createProject");
+        logInfo("createProject");
         const project = await ProjectModel.create({
             owner_id: req.user.userId,
             title: req.body.title,
@@ -72,7 +72,7 @@ async function createProject(req, res) {
             data: project
         });
     } catch (error) {
-        logger(error)
+        logError(error)
         return res.status(500).json({ error: 'Project creation failed' });
     }
 }
@@ -80,7 +80,7 @@ async function createProject(req, res) {
 
 async function delProjectById(req, res) {
     try {
-        console.log("delProjectById");
+        logInfo("delProjectById");
         const projectData = await ProjectModel.findById(req.params.pid);
         if (projectData.owner_id == req.user.userId) {
             await projectData.deleteOne();
@@ -89,13 +89,13 @@ async function delProjectById(req, res) {
         return res.status(401).json('Permission Denied')
 
     } catch (error) {
-        logger(error)
+        logError(error)
         return res.status(500).json('Error in Deletion');
     }
 }
 async function updateProjectById(req, res) {
     try {
-        console.log("updateProjectById")
+        logInfo("updateProjectById")
         const data = await ProjectModel.findById(req.params.pid);
         if (data.owner_id == req.user.userId) {
             const result = await ProjectModel.findByIdAndUpdate(req.params.pid, req.body, { new: true })
@@ -104,7 +104,7 @@ async function updateProjectById(req, res) {
         return res.status(401).json('Permission Denied')
 
     } catch (error) {
-        logger(error)
+        logError(error)
         return res.status(500).json('Error in Updating Project');
     }
 }
@@ -112,7 +112,7 @@ async function updateProjectById(req, res) {
 
 async function transpileProject(req, res) {
     try {
-        console.log("transpileProject", req.params);
+        logInfo("transpileProject", req.params);
         const project = await ProjectModel.findById(req.params.pid);
         const user = await UserModel.findById(req.user.userId);
         if (user.user_portfolio === "null" || user.user_portfolio === "undefined") {
@@ -128,16 +128,16 @@ async function transpileProject(req, res) {
         ) 
 
         webpack(customWebpackConfig, async (err, stats) => {
-            console.log("webpack");
+            logInfo("webpack");
             if (err || stats.hasErrors()) {
                 // Handle errors here
-                console.log("error: ", stats.toJson().errors);
-                console.log(err);
+                logger("error: ", stats.toJson().errors);
+                logger(err);
                 logger(err)
                 return res.status(500).json(err);
             }
             // Done processing
-            console.log("compiled");
+            logInfo("compiled");
             const result = await PortfolioModel.findOneAndUpdate(
                 {_id: project.owner_id},
                 {$set: {
@@ -151,7 +151,7 @@ async function transpileProject(req, res) {
         });
 
     } catch (error) {
-        logger(error)
+        logError(error)
         return res.status(500).json(error)
     }
 }

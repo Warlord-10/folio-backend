@@ -1,13 +1,13 @@
 const bcrypt = require('bcrypt');
 const UserModel = require("../models/user");
-const logger = require("../utils/logger.js");
+const {logError, logInfo} = require("../utils/logger.js");
 const { setAuthCookies } = require('../utils/authUtils.js');
 
 
 
 async function registerUser(req, res){
     try {
-        console.log("registerUser");
+        logInfo("registerUser");
         const user = await UserModel.create(req.body);
         
         // Generating JWT tokens
@@ -18,14 +18,14 @@ async function registerUser(req, res){
 
         return res.status(201).json(user);
     } catch (error) {
-        logger(error)
+        logError(error)
         return res.status(500).json('User creation failed');
     }
 }
 
 async function loginUser(req, res){
     try {
-        console.log("loginUser");
+        logInfo("loginUser");
 
         // Look into the session
         if(req.session.user){
@@ -51,7 +51,7 @@ async function loginUser(req, res){
             return res.status(401).json('Incorrect Password');
         }
     } catch (error) {
-        logger(error)
+        logError(error)
         return res.status(404).json('User Not Found');
     }
 }
@@ -59,7 +59,7 @@ async function loginUser(req, res){
 
 async function getSession(req, res){
     try {
-        console.log("getSession");
+        logInfo("getSession");
         if(req.session.user){
             return res.status(200).json(req.session.user);
         }
@@ -67,7 +67,7 @@ async function getSession(req, res){
             return res.status(404).json('No Session');
         }
     } catch (error) {
-        logger(error)
+        logError(error)
         return res.status(500).json('Error');
     }
 }
@@ -75,7 +75,7 @@ async function getSession(req, res){
 
 async function logoutUser(req, res){
     try {
-        console.log("logoutUser");
+        logInfo("logoutUser");
         res.clearCookie("accessToken");
         res.clearCookie("refreshToken");
         req.session.destroy();

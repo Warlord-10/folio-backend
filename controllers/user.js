@@ -1,10 +1,10 @@
 const UserModel = require("../models/user");
-const path = require("path");
+const {logError, logInfo} = require("../utils/logger.js");
 
 // For admin task only
 async function getAllUser(req, res){
     try {
-        console.log("getAllUser");
+        logInfo("getAllUser");
         const data = await UserModel.find({}, "-password");
         return res.status(200).json(
             data
@@ -29,7 +29,7 @@ async function delAllUser(req, res){
 
 // To view the details of a user
 async function getUserById(req, res){
-    console.log("getUserById");
+    logInfo("getUserById");
     try {
         const data = await UserModel.findById(req.params.uid, "-password");
         return res.status(200).json({
@@ -38,13 +38,13 @@ async function getUserById(req, res){
         });
         
     } catch (error) {
-        console.log(error)
+        logError(error)
         return res.status(500).json(error);
     }
 }
 async function delUserById(req, res){
     try {
-        console.log("delUserById");
+        logInfo("delUserById");
         const data = await UserModel.findById(req.user.userId);
         if(req.user && req.user.userId == req.params.uid){
             await data.deleteOne();
@@ -61,7 +61,7 @@ async function delUserById(req, res){
 }
 async function updateUserById(req, res){
     try {
-        console.log("updateUserById");
+        logInfo("updateUserById");
         if(req.user && req.user.userId == req.params.uid){
             const data = await UserModel.findByIdAndUpdate(req.user.userId, req.body, {new: true}).select("-password");
             return res.status(200).json(
@@ -79,14 +79,13 @@ async function updateUserById(req, res){
 
 async function getUserProfilePage(req, res){
     try {
-        console.log("getUserProfilePage");
+        logInfo("getUserProfilePage");
         const data = await UserModel.findById(req.params.uid);
         if(data.user_portfolio === "undefined" || data.user_portfolio === "null"){
             return res.status(404).json("No Folio Set");
         }
 
         const inputDir = `${data._id}/bundle.js`
-        console.log(inputDir);
 
         return res.status(200).json(inputDir)
     } catch (error) {
@@ -96,7 +95,7 @@ async function getUserProfilePage(req, res){
 
 async function findUser(req, res){
     try {
-        console.log("findUser");
+        logInfo("findUser");
         const searchTerm = req.query.name;
         const regex = new RegExp(searchTerm, 'i');
         const data = await UserModel

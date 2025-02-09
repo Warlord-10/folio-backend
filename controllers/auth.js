@@ -48,7 +48,6 @@ async function loginUser(req, res) {
 
         // Check if user exists
         const user = await UserModel.findOne({ email }, "+password").lean();
-        console.log(user)
         if (!user) {
             return res.status(404).send("User not found");
         }

@@ -83,7 +83,7 @@ app.get("/test", (req, res) => {
 
 
 if(process.env.MODE == "dev"){
-  const server = app.listen(process.env.PORT || 3005, ()=>{
+  const server = app.listen(3005, ()=>{
     console.log("server running: " + Date.now());
   })
   const host = server.address();
@@ -94,7 +94,12 @@ else{
     key: fs.readFileSync(`/etc/letsencrypt/live/${process.env.DOMAIN}/privkey.pem`),
     cert: fs.readFileSync(`/etc/letsencrypt/live/${process.env.DOMAIN}/fullchain.pem`)
   };
-  https.createServer(options, app).listen(process.env.PORT || 3005)
+  const httpsServer = https.createServer(options, app)
+  httpsServer.listen(process.env.PORT, ()=>{
+    console.log("server running: " + Date.now());
+  })
+  const address = httpsServer.address();
+  console.log(address)
 }
 
 module.exports = app;

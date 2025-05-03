@@ -12,28 +12,28 @@ async function registerUser(req, res) {
 
         // Validate request body
         if (!email || !password || !name) {
-            return res.status(400).send("All fields are required");
+            return res.status(400).json({error: "All fields are required"});
         }
 
         // Check if user already exists
         const existingUser = await UserModel.findOne({ email });
         if (existingUser) {
-            return res.status(409).send("Email already in use");
+            return res.status(409).json({error: "Email already in use"});
         }
 
         // Create new user
         const user = await UserModel.create({ email, name, password });
 
         // Generate JWT tokens & set auth cookies
-        setAuthCookies(res, user._id);
+        setAuthCookies(res, user.toJSON());
 
-        // Save user session
-        req.session.user = { _id: user._id, email: user.email, name: user.name };
-
-        return res.status(201).json({ message: "User registered successfully", user: user });
+        return res.status(201).json({
+            message: "User registered successfully",
+            user_id: user._id
+        });
     } catch (error) {
         logError(error);
-        return res.status(500).send("User creation failed");
+        return res.status(500).json({error: "User creation failed"});
     }
 }
 
@@ -44,34 +44,31 @@ async function loginUser(req, res) {
         const { email, password } = req.body;
 
         if (!email || !password) {
-            return res.status(400).send("Email and password are required");
+            return res.status(400).json({error: "Email and password are required"});
         }
 
         // Check if user exists
-        const user = await UserModel.findOne({ email }, "+password").lean();
+        const user = await UserModel.findOne({ email }, "+password");
         if (!user) {
-            return res.status(404).send("User not found");
+            return res.status(404).json({error: "User not found"});
         }
 
         // Verify password
         const passwordMatch = await bcrypt.compare(password, user.password);
         if (!passwordMatch) {
-            return res.status(401).send("Incorrect password");
+            return res.status(401).json({error: "Incorrect password"});
         }
 
-        // Remove password before saving to session
-        const userWithoutPassword = { _id: user._id, email: user.email, name: user.name };
-
         // Generate JWT tokens & set auth cookies
-        setAuthCookies(res, user._id);
+        setAuthCookies(res, user.toJSON());
 
-        // Save session
-        req.session.user = userWithoutPassword;
-
-        return res.status(200).json({ message: "Login successful", user: user });
+        return res.status(200).json({
+            message: "Login successful",
+            user_id: user._id
+        });
     } catch (error) {
         logError(error);
-        return res.status(500).send("Login failed");
+        return res.status(500).json({error: "Login failed"});
     }
 }
 
@@ -97,17 +94,10 @@ async function logoutUser(req, res) {
         res.cookie("accessToken", null, resetCookieSetting);
         res.cookie("refreshToken", null, resetCookieSetting);
 
-        req.session.destroy((err) => {
-            if (err) {
-                logError(err);
-                return res.status(500).send("Logout failed");
-            }
-
-            return res.status(200).json({ message: "Logout successful" });
-        });
+        return res.status(200).json({message: "Logout successful"});
     } catch (error) {
         logError(error);
-        return res.status(500).send("Logout error");
+        return res.status(500).json({error: "Logout error"});
     }
 }
 

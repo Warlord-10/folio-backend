@@ -19,17 +19,27 @@ const fileFilter = (req, file, cb) => {
 const fileUploadMiddleware = multer({storage: multer.diskStorage({
   destination: async function (req, file, cb) {
     try {
+      if(!file) {
+        return cb(new Error("No file found"), false);
+      }
+
       const newFile = await FileModel.create({
         name: file.originalname,
         parent_id: req.params.fid,
         size: file.size,
         extension: path.extname(file.originalname)
       })
+
+      if(!newFile) {
+        return cb(new Error("File not created"), false);
+      }
+
       const filePath = newFile.relPath.slice(0, newFile.relPath.lastIndexOf("\\"))
       return cb(null, path.join(process.cwd(), process.env.PROJECT_FILE_DEST, filePath))
 
     } catch (error) {
       logError(error);
+      return cb(new Error("Error occured in uploading the file"), false);
     }
   },
   filename: function (req, file, cb) {
@@ -42,15 +52,23 @@ const fileUploadMiddleware = multer({storage: multer.diskStorage({
 const avatarUploadMiddleware = multer({storage: multer.diskStorage({
   destination: async function (req, file, cb) {
     try {
-      const fullPath = path.join(process.cwd(), process.env.USER_FILE_DEST, `${req.params.uid}`)
+      console.log("i am here")
+      if(!file) {
+        return cb(new Error("No file found"), false);
+      }
+
+      const fullPath = path.join(process.cwd(), process.env.USER_FILE_DEST, req.params.uid);
+      req.body.avatar_path = `${req.params.uid}/avatar.jpeg`;
+
       return cb(null, fullPath);
     } catch (error) {
       logError(error);
+      return cb(new Error("Error occured in uploading the file"), false);
     }
   },
   filename: function (req, file, cb) {
     try {
-      req.body.avatar_path = `${req.params.uid}/avatar.jpeg`
+      console.log("i am here 2")
       return cb(null, "avatar.jpeg")
     } catch (error) {
       logError(error);
@@ -63,13 +81,19 @@ const avatarUploadMiddleware = multer({storage: multer.diskStorage({
 const bannerUploadMiddleware = multer({storage: multer.diskStorage({
   destination: async function(req, file, cb){
     try {
+      if(!file) {
+        return cb(new Error("No file found"), false);
+      }
+
       const project = await ProjectModel.findById(req.params.pid)
       const fullPath = path.join(process.cwd(), process.env.PROJECT_FILE_DEST, project.owner_id.toHexString(), project.title)
-      req.body.banner_path = path.join(project.owner_id.toHexString(), project.title, "project_banner.jpeg");
-      return cb(null, fullPath)
 
+      req.body.banner_path = path.join(project.owner_id.toHexString(), project.title, "project_banner.jpeg");
+
+      return cb(null, fullPath)
     } catch (error) {
       logError(error);
+      return cb(new Error("Error occured in uploading the file"), false);
     }
   },
   filename: function(req, file, cb){

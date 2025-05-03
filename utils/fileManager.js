@@ -9,6 +9,7 @@ const createFolder = (absPath) => {
             fs.mkdirSync(absPath, {recursive: true});
         }
     } catch (error) {
+        console.log(error);
         return error;
     }
 }

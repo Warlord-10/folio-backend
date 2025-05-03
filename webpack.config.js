@@ -78,7 +78,7 @@ module.exports = (entry, output) => {
         templateContent: `
           <!DOCTYPE html>
           <html lang="en">
-          <base href="${process.env.DOMAIN?"https://"+process.env.DOMAIN:"http://localhost"}:3005/bundle/${output}/">
+          <base href="${process.env.BACKEND_DOMAIN?"https://"+process.env.BACKEND_DOMAIN:"http://localhost"}:3005/bundle/${output}/">
           <head>
               <meta charset="UTF-8">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">

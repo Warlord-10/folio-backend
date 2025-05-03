@@ -1,5 +1,7 @@
 const UserModel = require("../models/user");
+const { setAuthCookies } = require("../utils/authUtils.js");
 const {logError, logInfo} = require("../utils/logger.js");
+const { generatePermission } = require("../utils/permissionManager.js");
 
 // For admin task only
 async function getAllUser(req, res){
@@ -27,61 +29,76 @@ async function delAllUser(req, res){
 
 
 
-// To view the details of a user
+// To view the details of a user by Id
 async function getUserById(req, res){
     logInfo("getUserById");
     try {
         const data = await UserModel.findById(req.params.uid, "-password");
+
+        if(!data){
+            return res.status(404).json("User not found");
+        }
+
         return res.status(200).json({
             data: data,
-            permission: req.user.userId == req.params.uid ? "OWNER" : "VISITOR"
+            permission: generatePermission(req.user._id, req.params.uid)
         });
-        
     } catch (error) {
         logError(error)
-        return res.status(500).json(error);
+        return res.status(500).json("Error occured in reading the user details");
     }
 }
+
+// To delete a user by Id
 async function delUserById(req, res){
     try {
         logInfo("delUserById");
-        const data = await UserModel.findById(req.user.userId);
-        if(req.user && req.user.userId == req.params.uid){
+        const data = await UserModel.findById(req.user._id);
 
-            await data.deleteOne();
-
-            res.clearCookie("accessToken");
-            res.clearCookie("refreshToken");
-
-            return res.status(200).send(
-                "Deleted"
-            );
+        if(!data){
+            return res.status(404).json("User not found");
         }
-        else{
-            return res.status(500).send("Permission Denied");
+
+        if(generatePermission(req.user._id, req.params.uid) != "OWNER"){
+            return res.status(401).json("Permission Denied");
         }
+
+        await data.deleteOne();
+        res.clearCookie("accessToken");
+        res.clearCookie("refreshToken");
+        return res.status(200).send("User Deleted");
     } catch (error) {
-        return res.status(500).json(error);
+        return res.status(500).json("Error occured in deleting the user");
     }
 }
+
+// To update a user by Id
 async function updateUserById(req, res){
     try {
         logInfo("updateUserById");
-        if(req.user && req.user.userId == req.params.uid){
-            const data = await UserModel.findByIdAndUpdate(req.user.userId, req.body, {new: true}).select("-password");
-            return res.status(200).json(
-                data
-            )
+
+        if(generatePermission(req.user._id, req.params.uid) != "OWNER"){
+            return res.status(403).json("Permission Denied");
         }
-        else{
-            return res.status(500).json("Permission Denied");
+        if(!req.body){
+            return res.status(400).json("Body is missing");
         }
+
+        const data = await UserModel.findByIdAndUpdate(req.user._id, req.body, {new: true}).select("-password");
+
+        if(!data){
+            return res.status(404).json("User not found");
+        }
+
+        // set new cookies
+        setAuthCookies(res, data);
+        return res.status(200).json(data)
     } catch (error) {
-        return res.status(404).json(error);
+        return res.status(500).json("Error occured in updating the user");
     }
 }
 
-
+// Deprecated
 async function getUserProfilePage(req, res){
     try {
         logInfo("getUserProfilePage");
@@ -98,6 +115,7 @@ async function getUserProfilePage(req, res){
     }
 }
 
+// Search for a user
 async function findUser(req, res){
     try {
         logInfo("findUser");
@@ -108,11 +126,13 @@ async function findUser(req, res){
             .limit(10)
             .select("name _id")
             .exec();
-        return res.status(200).json(
-            data
-        );
+
+        if(!data){
+            return res.status(404).json("No User Found");
+        }
+        return res.status(200).json(data);
     } catch (error) {
-        return res.status(500).json({ error: 'Error' });
+        return res.status(500).json("Error occured in searching the users");
     }
 }
 

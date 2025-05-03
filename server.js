@@ -37,7 +37,14 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(cors({
   origin: [
+    // Localhost
     "http://localhost:3000",
+
+    // Dev domains
+    "https://folio.com:3000",
+    "https://localhost:3000",
+
+    // Prod domains
     "https://folio-fullstack.vercel.app",
     "https://foli0.vercel.app",
     "https://folio-git-main-warlord-10s-projects.vercel.app",
@@ -83,15 +90,20 @@ app.get("/test", (req, res) => {
 
 
 if (process.env.MODE == "dev") {
-  const server = app.listen(process.env.PORT, () => {
+  const options = {
+    key: fs.readFileSync(`./certificates/localhost-key.pem`),
+    cert: fs.readFileSync(`./certificates/localhost.pem`)
+  };
+  const httpsServer = https.createServer(options, app)
+  httpsServer.listen(process.env.PORT, () => {
     console.log("server running in DEV: " + Date.now());
   })
-  const host = server.address();
-  console.log(host)
+  const address = httpsServer.address();
+  console.log(address)
 
   process.on("SIGINT", () => {
     console.log("Shutting down server...");
-    server.close(() => {
+    httpsServer.close(() => {
       console.log("Server closed.");
       process.exit(0);
     });
@@ -99,8 +111,8 @@ if (process.env.MODE == "dev") {
 }
 else {
   const options = {
-    key: fs.readFileSync(`/etc/letsencrypt/live/${process.env.DOMAIN}/privkey.pem`),
-    cert: fs.readFileSync(`/etc/letsencrypt/live/${process.env.DOMAIN}/fullchain.pem`)
+    key: fs.readFileSync(`/etc/letsencrypt/live/${process.env.BACKEND_DOMAIN}/privkey.pem`),
+    cert: fs.readFileSync(`/etc/letsencrypt/live/${process.env.BACKEND_DOMAIN}/fullchain.pem`)
   };
   const httpsServer = https.createServer(options, app)
   httpsServer.listen(process.env.PORT, () => {
@@ -112,10 +124,10 @@ else {
   process.on("SIGINT", () => {
     console.log("Shutting down server...");
     httpsServer.close(() => {
-        console.log("Server closed.");
-        process.exit(0);
+      console.log("Server closed.");
+      process.exit(0);
     });
-});
+  });
 }
 
 module.exports = app;

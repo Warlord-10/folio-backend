@@ -2,15 +2,15 @@ const jwt = require("jsonwebtoken");
 require('dotenv').config();
 
 // Main functions
-function generateRefreshToken(userId){
+function generateRefreshToken(data){
     try {
         return jwt.sign(
-            {userId}, 
+            {user: data}, 
             process.env.REFRESH_TOKEN,
             {expiresIn: "1d"}
         );
     } catch (error) {
-        return null
+        throw new Error("Error occured in generating refresh token")
     }
 }
 function verifyRefreshToken(tok){
@@ -22,15 +22,15 @@ function verifyRefreshToken(tok){
 }
 
 
-function generateAccessToken(userId){
+function generateAccessToken(data){
     try {
         return jwt.sign(
-            {userId}, 
+            {user: data}, 
             process.env.ACCESS_TOKEN,
             {expiresIn: "1h"}
         );
     } catch (error) {
-        return null
+        throw new Error("Error occured in generating access token")
     }
 }
 function verifyAccessToken(tok){
@@ -44,6 +44,7 @@ function verifyAccessToken(tok){
 module.exports = {
     generateRefreshToken, 
     verifyRefreshToken, 
+
     generateAccessToken, 
     verifyAccessToken
 };

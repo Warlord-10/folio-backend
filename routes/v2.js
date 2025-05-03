@@ -9,11 +9,10 @@ const router = express.Router();
 
 router.use(verifyAccessTokenMiddleWare);
 
-router.get("/:uid/:pname/tree/main/:repo_path(*)", getFolder_v2);
-router.get("/:uid/:pname/blob/main/:repo_path(*)", getFileDetails_v2);
+router.get("/:uid/:pname/tree/main/:repo_path(*)?", getFolder_v2);
+router.get("/:uid/:pname/blob/main/:repo_path(*)?", getFileDetails_v2);
 router.get("/file/:repo_path(*)", getFile_v2);
 router.get("/project/:uid/:pname", getProjectByName);
 
-// router.get(/:uid/:pname)
 
 module.exports = router;

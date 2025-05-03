@@ -44,6 +44,7 @@ const {logError, logInfo} = require("../utils/logger.js");
 // }
 
 
+// Fetch all portfolios in the DB
 async function fetchAllPortfolios(req, res) {
     logInfo("fetchAllPortfolios");
     try {
@@ -112,7 +113,7 @@ async function addLike(req, res) {
         const userId = req.user?.userId;
 
         // Create a new like
-        await LikeModel.create({
+        const res = await LikeModel.create({
             user_id: userId,
             portfolio_id: portfolioId
         });
@@ -127,7 +128,7 @@ async function addLike(req, res) {
         res.status(200).json({ message: 'Portfolio liked successfully', totalLikes: portfolioData.likes });
     } catch (error) {
         logError(error);
-        res.status(500).json({ message: 'Error adding like' });
+        res.status(500).json("Error occured in liking the portfolio");
     }
 }
 
@@ -154,7 +155,7 @@ async function removeLike(req, res) {
         res.status(200).json({ message: 'Portfolio unliked successfully', totalLikes: portfolioData.likes });
     } catch (error) {
         logError(error);
-        res.status(500).json({ message: 'Error removing like' });
+        res.status(500).json("Error occured in unliking the portfolio");
     }
 }
 

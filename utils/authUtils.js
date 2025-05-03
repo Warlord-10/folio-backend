@@ -2,9 +2,9 @@ const { accessCookieSetting, refreshCookieSetting } = require("../middleware/coo
 const { generateAccessToken, generateRefreshToken } = require("./jwt");
 
 // authUtils.js
-function setAuthCookies(res, userId) {
-    const accessToken = generateAccessToken(userId);
-    const refreshToken = generateRefreshToken(userId);
+function setAuthCookies(res, userData) {
+    const accessToken = generateAccessToken(userData);
+    const refreshToken = generateRefreshToken(userData);
     
     res.cookie("accessToken", accessToken, accessCookieSetting);
     res.cookie("refreshToken", refreshToken, refreshCookieSetting);

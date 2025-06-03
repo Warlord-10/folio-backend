@@ -1,0 +1,59 @@
+services:
+  node-backend:
+    build: ./node-server
+    container_name: node-backend
+    ports:
+      - "3005:3005"  # Uses value from .env #
+    env_file:
+      - ./node-server/.env
+    volumes:
+      - ./node-server:/app  # Mounts the local node-server directory to the container's /app directory
+      - /app/node_modules  # Protects the container’s dependency folder from being overwritten by the host and allows it to persist across runs, isolating it from local file system issues.
+      - s3_storage:/app/s3_storage  # Mounts the local s3_storage directory to the container's /app/s3_storage directory for persistance
+    networks:
+      - folio-net
+    depends_on:
+      - redis
+      - rabbitmq
+
+  # go-worker:
+  #   build: ./go-worker
+  #   container_name: go-worker
+  #   volumes:
+  #     - s3_storage:/app/s3_storage
+
+
+  redis:
+    image: redis:8-alpine
+    container_name: folio-redis
+    ports:
+      - "6379:6379"
+    networks:
+        - folio-net
+    restart: always
+
+
+  rabbitmq:
+    image: rabbitmq:4-alpine
+    container_name: folio-rabbitmq
+    ports:
+      - "5672:5672"   # AMQP protocol port
+      - "15672:15672" # Management UI port
+    environment:
+      - RABBITMQ_DEFAULT_USER=user
+      - RABBITMQ_DEFAULT_PASS=password
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - folio-net
+    restart: always
+
+
+
+volumes:
+  rabbitmq_data:
+  s3_storage:
+
+networks:
+  folio-net:
+    driver: bridge

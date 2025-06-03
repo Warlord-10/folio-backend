@@ -1,6 +1,7 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+const { ProgressPlugin } = require('webpack');
 
 
 
@@ -92,7 +93,21 @@ module.exports = (entry, output) => {
           </html>
         `
       }),
-      new CleanWebpackPlugin()
+      new CleanWebpackPlugin(),
+      new ProgressPlugin({
+        activeModules: false,
+        entries: true,
+        handler(percentage, message, ...args) {
+          // custom logic
+          console.log(`${percentage*100}%`, message, ...args);
+        },
+        modules: true,
+        modulesCount: 5000,
+        profile: false,
+        dependencies: true,
+        dependenciesCount: 10000,
+        percentBy: null,
+      })
     ],
     optimization: {
       runtimeChunk: 'single',

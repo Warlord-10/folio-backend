@@ -2,6 +2,9 @@ const UserModel = require("../models/user");
 const { setAuthCookies } = require("../utils/authUtils.js");
 const {logError, logInfo} = require("../utils/logger.js");
 const { generatePermission } = require("../utils/permissionManager.js");
+const { redisService } = require("../services/redis.js");
+
+const redisClient = redisService.getClient();
 
 // For admin task only
 async function getAllUser(req, res){
@@ -33,11 +36,25 @@ async function delAllUser(req, res){
 async function getUserById(req, res){
     logInfo("getUserById");
     try {
+        // Try to get from Redis cache first
+        const cachedUser = await redisClient.get(`user:${req.params.uid}`);
+        if (cachedUser) {
+            const userData = JSON.parse(cachedUser);
+            return res.status(200).json({
+                data: userData,
+                permission: generatePermission(req.user._id, req.params.uid)
+            });
+        }
+
+        // If not in cache, get from database
         const data = await UserModel.findById(req.params.uid, "-password");
 
         if(!data){
             return res.status(404).json("User not found");
         }
+
+        // Store in Redis with expiration
+        await redisClient.set(`user:${req.params.uid}`, JSON.stringify(data), 'EX', 300); // 5 minutes
 
         return res.status(200).json({
             data: data,
@@ -64,8 +81,14 @@ async function delUserById(req, res){
         }
 
         await data.deleteOne();
+
+        // Delete the user's data from Redis cache
+        await redisClient.del(`user:${req.params.uid}`);
+
+        // Remove cookies
         res.clearCookie("accessToken");
         res.clearCookie("refreshToken");
+
         return res.status(200).send("User Deleted");
     } catch (error) {
         return res.status(500).json("Error occured in deleting the user");
@@ -89,6 +112,9 @@ async function updateUserById(req, res){
         if(!data){
             return res.status(404).json("User not found");
         }
+
+        // Update the user's data in Redis cache
+        await redisClient.set(`user:${req.params.uid}`, JSON.stringify(data), 'EX', 300); // 5 minutes
 
         // set new cookies
         setAuthCookies(res, data);

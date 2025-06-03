@@ -10,6 +10,7 @@ async function getFile_v2(req, res){
     try {
         logInfo("getFile_v2")
         const full_path_of_file = path.join(process.cwd(), process.env.PROJECT_FILE_DEST, req.params.repo_path)
+        
         return res.sendFile(full_path_of_file);
     } catch (error) {
         logError(error)
@@ -23,7 +24,8 @@ async function getFileDetails_v2(req, res){
         logInfo("getFileDetails_v2")
         const repoPath = req.params.repo_path ?? '';
 
-        const data = await FileModel.findOne({relPath: path.join(req.params.uid, req.params.pname, repoPath)})
+        const full_path_of_file = path.join(req.params.uid, req.params.pname, repoPath)
+        const data = await FileModel.findOne({relPath: full_path_of_file})
 
         if(!data) return res.status(404).json("File not found")
 
@@ -45,7 +47,8 @@ async function getFolder_v2(req, res){
         logInfo("getFolder_v2")
         const repoPath = req.params.repo_path ?? '';
 
-        const currFolder = await FolderModel.findOne({relPath: path.join(req.params.uid, req.params.pname, repoPath)})
+        const pathToSearch = path.join(req.params.uid, req.params.pname, repoPath)
+        const currFolder = await FolderModel.findOne({relPath: pathToSearch})
 
         if(!currFolder) return res.status(404).json("Folder not found")
 

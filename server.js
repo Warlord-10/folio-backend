@@ -8,7 +8,8 @@ const https = require('https');
 const fs = require('fs');
 const session = require('express-session');
 require('dotenv').config();
-
+const pubSubService = require('./services/pubSubService');
+const { initiateServices } = require('./services/serviceManager');
 
 const authRoutes = require("./routes/auth.js");
 const userRoutes = require("./routes/user.js");
@@ -17,18 +18,26 @@ const repoRoutes = require("./routes/repo.js");
 const portfolioRoutes = require("./routes/portfolio.js");
 const v2Routes = require("./routes/v2.js");
 
-const { startDatabase } = require('./utils/mongodb.js');
+
+// const { transpileManager } = require('./services/transpileManager.js');
 const { createFolder } = require('./utils/fileManager.js');
+const { logSystem } = require('./utils/logger.js');
+// const { startDatabase } = require('./services/mongodb.js');
+// const { connectRedis } = require('./services/redis.js');
 
 
-// Creating an Express application
 createFolder(process.env.BUNDLED_PROJECT_DEST)  // It stores project bundles of each user
 createFolder(process.env.USER_FILE_DEST)  // It stores the user files
 createFolder(process.env.PROJECT_FILE_DEST) // It stores the project files of the projects 
-const app = express();
 
-// DB connect
-startDatabase(process.env.DB_URL)
+
+// Starting essential services
+initiateServices();
+
+
+// Creating an Express application
+const app = express();
+logSystem(`CWD: ${process.cwd()}`)
 
 
 // Middlewares
@@ -90,45 +99,38 @@ app.get("/test", (req, res) => {
 
 
 if (process.env.MODE == "dev") {
+  logSystem("Running in DEV mode");
   const options = {
     key: fs.readFileSync(`./certificates/localhost-key.pem`),
     cert: fs.readFileSync(`./certificates/localhost.pem`)
   };
+
   const httpsServer = https.createServer(options, app)
   httpsServer.listen(process.env.PORT, () => {
-    console.log("server running in DEV: " + Date.now());
+    logSystem(`server running in DEV: ${Date.now()}`);
   })
-  const address = httpsServer.address();
-  console.log(address)
-
-  process.on("SIGINT", () => {
-    console.log("Shutting down server...");
-    httpsServer.close(() => {
-      console.log("Server closed.");
-      process.exit(0);
-    });
-  });
 }
+
 else {
+  logSystem("Running in PROD mode");
   const options = {
     key: fs.readFileSync(`/etc/letsencrypt/live/${process.env.BACKEND_DOMAIN}/privkey.pem`),
     cert: fs.readFileSync(`/etc/letsencrypt/live/${process.env.BACKEND_DOMAIN}/fullchain.pem`)
   };
+
   const httpsServer = https.createServer(options, app)
   httpsServer.listen(process.env.PORT, () => {
-    console.log("server running in PROD: " + Date.now());
+    logSystem(`server running in PROD: ${Date.now()}`);
   })
-  const address = httpsServer.address();
-  console.log(address)
-
-  process.on("SIGINT", () => {
-    console.log("Shutting down server...");
-    httpsServer.close(() => {
-      console.log("Server closed.");
-      process.exit(0);
-    });
-  });
 }
+
+process.on("SIGINT", () => {
+  logSystem("Shutting down server...");
+  httpsServer.close(() => {
+    logSystem("Server closed.");
+    process.exit(0);
+  });
+});
 
 module.exports = app;
 

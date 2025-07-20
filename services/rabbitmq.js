@@ -1,35 +1,76 @@
 const amqp = require('amqplib');
 
-async function connectRabbitMQ(url, queueName, options={durable: true}) {
-    let MAX_RETRIES = 5;
-    while(MAX_RETRIES > 0){
-        try {
-            const connection = await amqp.connect(url);
-            const channel = await connection.createChannel();
-            await channel.assertQueue(queueName, options);
+class RabbitMQClient {
+    static instance = null;
 
-            // if (connection && channel) {
-            //     return {connection, channel};
-            // } else {
-            //     throw new Error('Failed to establish RabbitMQ connection');
-            // }
-            
-            return {connection, channel};
-        } catch (error) {
-            console.error(`Failed to connect to RabbitMQ, retrying... (${MAX_RETRIES} attempts left)`);
-            const timeout = Math.pow(2, 5 - MAX_RETRIES) * 1000; // Exponential backoff starting at 1s
-            await new Promise(resolve => setTimeout(resolve, timeout));
-            MAX_RETRIES--;
+    constructor() {
+        this.connection = null;
+        this.channel = null;
+        this.queueName = null;
+
+        // this.ready = this.connect();
+    }
+
+    static getInstance() {
+        if (!RabbitMQClient.instance) {
+            RabbitMQClient.instance = new RabbitMQClient();
         }
+        return RabbitMQClient.instance;
+    }
+
+    async connect(queueName = 'transpile_jobs', options = { durable: true }) {
+        if (this.channel) return this.channel;
+
+        const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://user:password@rabbitmq:5672';
+        const MAX_RETRIES = 5;
+        let retries = MAX_RETRIES;
+
+        while (retries > 0) {
+            try {
+                this.connection = await amqp.connect(RABBITMQ_URL);
+                this.channel = await this.connection.createChannel();
+                await this.channel.assertQueue(queueName, options);
+                this.queueName = queueName;
+
+                this.connection.on('error', (err) => {
+                    console.error('RabbitMQ connection error:', err.message);
+                    this.connection = null;
+                    this.channel = null;
+                });
+
+                this.connection.on('close', () => {
+                    console.warn('RabbitMQ connection closed');
+                    this.connection = null;
+                    this.channel = null;
+                });
+
+                return this.channel;
+            } catch (error) {
+                console.error(`Failed to connect to RabbitMQ (${retries} retries left):`, error.message);
+                const timeout = Math.pow(2, MAX_RETRIES - retries) * 1000;
+                await new Promise(res => setTimeout(res, timeout));
+                retries--;
+            }
+        }
+
+        throw new Error('Could not establish RabbitMQ connection');
+    }
+
+    async sendToQueue(messageObj) {
+        if (!this.channel || !this.queueName) {
+            throw new Error('RabbitMQ is not connected. Call connect() first.');
+        }
+
+        const buffer = Buffer.from(JSON.stringify(messageObj));
+        this.channel.sendToQueue(this.queueName, buffer, { persistent: true });
+    }
+
+    async close() {
+        if (this.channel) await this.channel.close();
+        if (this.connection) await this.connection.close();
+        this.channel = null;
+        this.connection = null;
     }
 }
 
-async function disconnectRabbitMQ(connection, channel) {
-    await channel.close();
-    await connection.close();
-}
-
-module.exports = { 
-    connectRabbitMQ, 
-    disconnectRabbitMQ 
-};
+module.exports = RabbitMQClient;

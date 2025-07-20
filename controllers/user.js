@@ -35,6 +35,7 @@ async function delAllUser(req, res){
 // To view the details of a user by Id
 async function getUserById(req, res){
     logInfo("getUserById");
+    console.log(req.params)
     try {
         // Try to get from Redis cache first
         const cachedUser = await redisClient.get(`user:${req.params.uid}`);
@@ -50,6 +51,7 @@ async function getUserById(req, res){
         const data = await UserModel.findById(req.params.uid, "-password");
 
         if(!data){
+            console.log("errorr")
             return res.status(404).json("User not found");
         }
 

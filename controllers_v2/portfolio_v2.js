@@ -98,7 +98,7 @@ async function fetchAllPortfolios(req, res) {
         });
 
     } catch (error) {
-        LogError(error);
+        logError(error);
         return res.status(500).json({ message: "Error fetching portfolios" });
     }
 }

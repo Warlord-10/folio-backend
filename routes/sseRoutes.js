@@ -1,49 +1,48 @@
 const express = require('express');
 const { logInfo, logError } = require('../utils/logger');
-const { redisClient } = require('../config/redis');
-
 
 const router = express.Router();
+const pubsub = require("../services/pubSubService")
 
 
-
-// Create a new Redis client for subscription
-const subscriber = redisClient.duplicate();
-
-router.get('/events/:channel', async (req, res) => {
+router.get('/notification/:channel', async (req, res) => {
+    console.log("Got an SSE request", req.params);
     const { channel } = req.params;
+    const fullChannel = `portfolio-logs:${channel}`;
 
-    // Set headers for SSE
-    res.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive'
-    });
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Content-Encoding', 'none');
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.flushHeaders(); // flush immediately if supported
 
-    // Send initial connection established message
-    res.write(`data: ${JSON.stringify({ type: 'connected' })}\n\n`);
-
-    // Handle client disconnect
+    
     req.on('close', async () => {
+        clearInterval(heartbeat);
         try {
-            await subscriber.unsubscribe(channel);
+            await pubsub.unsubscribe(fullChannel);
             logInfo(`Client disconnected from channel: ${channel}`);
         } catch (error) {
             logError(`Error unsubscribing from channel: ${channel}`, error);
         }
     });
-
+    
+    // Send initial heartbeat or comment
+    res.write(`data: ${JSON.stringify({ message: `Connected to ${channel}` })}\n\n`);
+    console.log("sent something");
+    
+    
     try {
-        // Connect subscriber if not connected
-        if (!subscriber.isOpen) {
-            await subscriber.connect();
-        }
+        console.log("trying my best")
+        // if (!pubsub.isOpen) {
+        //     console.log("connecting")
+        //     await pubsub.connect();
+        // }
 
-        // Subscribe to the specified channel
-        await subscriber.subscribe(channel, (message) => {
+        await pubsub.subscribe(fullChannel, (message) => {
             try {
-                // Send the message to the client
-                res.write(`data: ${message}\n\n`);
+                console.log("got a message")
+                res.write(`data: ${JSON.stringify({ message: message })}\n\n`);
             } catch (error) {
                 logError(`Error sending SSE message: ${error}`);
             }
@@ -55,5 +54,6 @@ router.get('/events/:channel', async (req, res) => {
         res.end();
     }
 });
+
 
 module.exports = router;

@@ -29,7 +29,7 @@ async function registerUser(req, res) {
 
         return res.status(201).json({
             message: "User registered successfully",
-            user_id: user._id
+            user: user
         });
     } catch (error) {
         logError(error);
@@ -64,7 +64,7 @@ async function loginUser(req, res) {
 
         return res.status(200).json({
             message: "Login successful",
-            user_id: user._id
+            user: user
         });
     } catch (error) {
         logError(error);

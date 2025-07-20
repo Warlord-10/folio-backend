@@ -2,16 +2,21 @@ const { logError, logInfo, logSystem } = require("../utils/logger.js");
 const { redisService } = require("./redis.js");
 
 class PubSubService {
-    constructor() {}
+    constructor() {
+        if (PubSubService.instance) return PubSubService.instance;
+        PubSubService.instance = this;
+
+        this.ready = this.connect();
+    }
 
     async connect() {
         try {
             this.publisher = await redisService.getDuplicateClient(1);
             this.subscriber = await redisService.getDuplicateClient(1);
-            
+
             logInfo("PubSub initialized. Publisher: " + this.publisher.isOpen + ", Subscriber: " + this.subscriber.isOpen);
 
-            return 0;
+            return true;
         } catch (error) {
             logSystem(error.toString(), "PUBSUB");
             throw error;
@@ -31,8 +36,12 @@ class PubSubService {
     async subscribe(channel, callback) {
         try {
             await this.subscriber.subscribe(channel, (message) => {
-                const parsedMessage = JSON.parse(message);
-                callback(parsedMessage);
+                try {
+                    const parsed = JSON.parse(message);
+                    callback(parsed);
+                } catch (err) {
+                    logError(`PubSub callback error on channel ${channel}: ${err.message}`);
+                }
             });
             logInfo(`Subscribed to ${channel}`);
         } catch (error) {
@@ -50,8 +59,17 @@ class PubSubService {
             throw error;
         }
     }
+
+    async disconnect() {
+        try {
+            if (this.publisher?.isOpen) await this.publisher.quit();
+            if (this.subscriber?.isOpen) await this.subscriber.quit();
+            logInfo('PubSub connections closed');
+        } catch (err) {
+            logError(`Error closing PubSub: ${err.message}`);
+        }
+    }
 }
 
 const pubSubService = new PubSubService();
-
 module.exports = pubSubService;

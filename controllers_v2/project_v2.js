@@ -4,9 +4,8 @@ const UserModel = require("../models/user.js");
 const linguist = require('linguist-js');
 const { logError, logInfo } = require("../utils/logger.js");
 const { generatePermission } = require("../utils/permissionManager.js");
-const amqp = require('amqplib');
-const { connectRabbitMQ, disconnectRabbitMQ } = require("../services/rabbitmq.js");
 
+const RabbitMQClient = require("../services/rabbitmq.js");
 
 // Fetches the project by name
 async function getProjectByName(req, res) {
@@ -64,19 +63,10 @@ async function transpileProject_v2(req, res) {
         };
 
         // Connect to RabbitMQ 
-        const { connection, channel } = await connectRabbitMQ(
-            'amqp://user:password@rabbitmq:5672',
-            'transpile_jobs'
-        )
-
-        // Send the job to the queue
-        channel.sendToQueue('transpile_jobs', Buffer.from(JSON.stringify(job)), {
-            persistent: true
-        });
+        const rabbit = RabbitMQClient.getInstance();
+        await rabbit.connect(); 
+        await rabbit.sendToQueue(job);
         logInfo(`Job queued for transpilation: ${project.title}`);
-
-
-        await disconnectRabbitMQ(connection, channel);
 
         return res.status(200).json({
             message: "Project transpilation job queued successfully",

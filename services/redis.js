@@ -1,50 +1,59 @@
 const { createClient } = require('redis');
-const { logInfo, logError, logSystem } = require('../utils/logger.js'); // Optional logging
+const { logSystem } = require('../utils/logger');
 
 class RedisService {
   constructor() {
     if (RedisService.instance) return RedisService.instance;
+    RedisService.instance = this;
 
-    this.redisClient = createClient({
-      url: `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`
-    });
+    const host = process.env.REDIS_HOST || 'localhost';
+    const port = process.env.REDIS_PORT || 6379;
+    this.redisClient = createClient({ url: `redis://${host}:${port}` });
 
     this.redisClient.on('error', (err) => {
-      logSystem(err.toString(), "REDIS");
+      logSystem(`[Redis Error] ${err.message}`, 'REDIS');
     });
 
-    RedisService.instance = this;
-  }
-
-  async connect() {
-    if (!this.redisClient) throw new Error('Redis client not initialized');
-
-    if (!this.redisClient.isOpen) {
-      await this.redisClient.connect();
-      await this.redisClient.ping();
-      logInfo('Redis initialized');
-    }
-
-    return 0;
-  }
-
-  async getDuplicateClient(index=0) {
-    if (!this.redisClient) throw new Error('Redis client not initialized');
-    const dup = this.redisClient.duplicate();
-    await dup.connect();
-    await dup.select(index); // Optional
-    return dup;
+    this.ready = this.connectClient();
   }
 
   getClient() {
-    if (!this.redisClient) throw new Error('Redis client not initialized');
+    if (!this.redisClient || !this.redisClient.isOpen) {
+      throw new Error('Redis client not connected');
+    }
     return this.redisClient;
+  }
+
+  async connectClient() {
+    try {
+      await this.redisClient.connect();
+      await this.redisClient.ping();
+      logSystem('Redis connected successfully', 'REDIS');
+      return true;
+    } catch (err) {
+      logSystem(`Failed to connect to Redis: ${err.message}`, 'REDIS');
+      throw err;
+    }
+  }
+
+  async getDuplicateClient(index = 0) {
+    try {
+      const dup = this.redisClient.duplicate();
+      await dup.connect();
+      await dup.select(index);
+      return dup;
+    } catch (error) {
+      throw new Error(`Failed to get duplicate client: ${error.message}`);
+    }
+  }
+
+  async disconnectClient() {
+    if (this.redisClient && this.redisClient.isOpen) {
+      await this.redisClient.disconnect();
+      logSystem('Redis disconnected', 'REDIS');
+    }
   }
 }
 
-// Export singleton instance
 const redisService = new RedisService();
-
-module.exports = {
-  redisService
-};
+module.exports = { redisService };

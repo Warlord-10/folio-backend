@@ -17,6 +17,7 @@ const projectRoutes = require("./routes/project.js");
 const repoRoutes = require("./routes/repo.js");
 const portfolioRoutes = require("./routes/portfolio.js");
 const v2Routes = require("./routes/v2.js");
+const sseRoutes = require("./routes/sseRoutes.js");
 
 
 // const { transpileManager } = require('./services/transpileManager.js');
@@ -50,7 +51,7 @@ app.use(cors({
     "http://localhost:3000",
 
     // Dev domains
-    "https://folio.com:3000",
+    "https://folio.test:3000",
     "https://localhost:3000",
 
     // Prod domains
@@ -70,9 +71,9 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.MODE === "dev" ? false : true, // Set to true in production if using HTTPS
+    secure: true, // Set to true in production if using HTTPS
     maxAge: 1000 * 60 * 60 * 24, // Session lifetime (24 hours)
-    sameSite: "none",
+    sameSite: "Strict",
     httpOnly: true,
   },
 }));
@@ -86,6 +87,7 @@ app.use("/repo", repoRoutes);
 app.use("/portfolio", portfolioRoutes);
 
 app.use("/v2", v2Routes);
+app.use("/events", sseRoutes);
 // app.use("/git")
 
 app.use("/bundle", express.static(path.join(process.cwd(), process.env.BUNDLED_PROJECT_DEST)));
@@ -94,7 +96,7 @@ app.use("/banner", express.static(path.join(process.cwd(), process.env.PROJECT_F
 
 // For testing only
 app.get("/test", (req, res) => {
-  res.send(path.join(process.cwd(), "template.html"));
+  return res.status(200).json({"msg": "hello"})
 })
 
 

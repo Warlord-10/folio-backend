@@ -1,7 +1,7 @@
 const { Worker } = require('worker_threads');
 const path = require('path');
-const { logInfo, logError } = require('../utils/logger');
-const RabbitMQClient = require('./rabbitmq');
+const { logInfo, logError, logSystem } = require('../utils/logger');
+const rabbitMQService = require('./rabbitmq');
 const pubSubService = require('./pubSubService');
 
 const MAX_WORKERS = 4;
@@ -9,19 +9,21 @@ const activeWorkers = new Set();
 
 async function transpileManager() {
     try {
-        const rabbitClient = RabbitMQClient.getInstance();
-        
-        const channel = await rabbitClient.connect();
-        channel.prefetch(MAX_WORKERS);
+        await rabbitMQService.connect(); // ensure connection
+
+        // Optionally, set prefetch if you want to limit unacked messages
+        if (rabbitMQService.channel) {
+            rabbitMQService.channel.prefetch(MAX_WORKERS);
+        }
 
         logInfo("Transpile manager initialized");
 
-        channel.consume('transpile_jobs', async (msg) => {
+        await rabbitMQService.consume('transpile_jobs', async (msg) => {
             if (!msg) return;
 
             if (activeWorkers.size >= MAX_WORKERS) {
                 logInfo(`Worker limit (${MAX_WORKERS}) reached. Requeueing...`);
-                channel.nack(msg, false, true);
+                rabbitMQService.channel.nack(msg, false, true);
                 return;
             }
 
@@ -30,16 +32,16 @@ async function transpileManager() {
                 logInfo(`Received job for project: ${job.projectId}`);
 
                 await runWorker(job);
-                channel.ack(msg);
+                rabbitMQService.channel.ack(msg);
                 logInfo(`Job completed for project: ${job.projectId}`);
             } catch (err) {
                 logError(`Job failed: ${err}`);
-                channel.nack(msg, false, false); // discard or dead-letter
+                rabbitMQService.channel.nack(msg, false, false); // discard or dead-letter
             }
         });
 
         process.on('SIGINT', async () => {
-            await rabbitClient.close();
+            await rabbitMQService.close();
             process.exit(0);
         });
     } catch (err) {
@@ -56,10 +58,17 @@ function runWorker(job) {
         activeWorkers.add(worker);
 
         worker.on('message', (msg) => {
-            if (msg.type === 'progress') {
-                pubSubService.publish(`portfolio-logs:${projectId}`, msg.progress);
-            } else if (msg.type === 'done') {
-                pubSubService.publish(`portfolio-logs:${projectId}`, msg.data);
+            try {
+                logSystem(`Received message from worker`, "MAIN THREAD")
+                if (msg.type === 'progress') {
+                    pubSubService.publish(`portfolio-logs:${job.userId}`, msg.data);
+                } else if (msg.type === 'done') {
+                    pubSubService.publish(`portfolio-logs:${job.userId}`, msg.data);
+                    resolve("Transpilation completed");
+                    activeWorkers.delete(worker);
+                }
+            } catch (error) {
+                console.log(error)
             }
         });
         worker.on('error', reject);

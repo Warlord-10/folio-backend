@@ -6,3 +6,4 @@
 /user_files
 .env
 /certificates
+/s3_storage

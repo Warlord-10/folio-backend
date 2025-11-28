@@ -1,6 +1,6 @@
 // const { parentPort, workerData } = require('worker_threads');
 // const { getWebpackConfig } = require("../config/webpack.js")
-// const { logError, logInfo } = require("../utils/logger.js");
+const { logError, logInfo, logSystem } = require("../utils/logger.js");
 
 // const webpack = require('webpack');
 // const path = require('path');
@@ -73,6 +73,7 @@ async function main() {
       entry = path.join(userId, projectTitle),
       output = userId,
       progressStreamCallback = async (data) => {
+        logSystem(`Sending data to main thread`, "WORKER THREAD")
         console.log("PUBLISHING DATA", data)
         parentPort.postMessage({
           type: 'progress',

@@ -79,7 +79,7 @@ module.exports = (entry, output) => {
         templateContent: `
           <!DOCTYPE html>
           <html lang="en">
-          <base href="${process.env.BACKEND_DOMAIN?"https://"+process.env.BACKEND_DOMAIN:"http://localhost"}:3005/bundle/${output}/">
+          <base href="${process.env.BACKEND_DOMAIN ? "https://" + process.env.BACKEND_DOMAIN : "https://localhost"}:3005/bundle/${output}/">
           <head>
               <meta charset="UTF-8">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -99,7 +99,7 @@ module.exports = (entry, output) => {
         entries: true,
         handler(percentage, message, ...args) {
           // custom logic
-          console.log(`${percentage*100}%`, message, ...args);
+          console.log(`${percentage * 100}%`, message, ...args);
         },
         modules: true,
         modulesCount: 5000,

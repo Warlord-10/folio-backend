@@ -2,7 +2,7 @@ const express = require('express');
 const { logInfo, logError } = require('../utils/logger');
 
 const router = express.Router();
-const pubsub = require("../services/pubSubService")
+const pubSubService = require("../services/pubSubService")
 
 
 router.get('/notification/:channel', async (req, res) => {
@@ -15,31 +15,20 @@ router.get('/notification/:channel', async (req, res) => {
     res.setHeader('Content-Encoding', 'none');
     res.setHeader("Cache-Control", "no-cache, no-transform");
     res.flushHeaders(); // flush immediately if supported
+    
 
-    
-    req.on('close', async () => {
-        clearInterval(heartbeat);
-        try {
-            await pubsub.unsubscribe(fullChannel);
-            logInfo(`Client disconnected from channel: ${channel}`);
-        } catch (error) {
-            logError(`Error unsubscribing from channel: ${channel}`, error);
-        }
-    });
-    
     // Send initial heartbeat or comment
     res.write(`data: ${JSON.stringify({ message: `Connected to ${channel}` })}\n\n`);
-    console.log("sent something");
+    const HEARTBEAT_INTERVAL = 15000; // every 15 seconds
+
+    const heartbeat = setInterval(() => {
+        res.write(`: heartbeat\n\n`);
+    }, HEARTBEAT_INTERVAL);
     
     
     try {
         console.log("trying my best")
-        // if (!pubsub.isOpen) {
-        //     console.log("connecting")
-        //     await pubsub.connect();
-        // }
-
-        await pubsub.subscribe(fullChannel, (message) => {
+        await pubSubService.subscribe(fullChannel, (message) => {
             try {
                 console.log("got a message")
                 res.write(`data: ${JSON.stringify({ message: message })}\n\n`);
@@ -53,6 +42,17 @@ router.get('/notification/:channel', async (req, res) => {
         logError(`Error in SSE connection: ${error}`);
         res.end();
     }
+
+
+    req.on('close', async () => {
+        try {
+            clearInterval(heartbeat);
+            await pubSubService.unsubscribe(fullChannel);
+            logInfo(`Client disconnected from channel: ${channel}`);
+        } catch (error) {
+            logError(`Error unsubscribing from channel: ${channel}`, error);
+        }
+    });
 });
 
 

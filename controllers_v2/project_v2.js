@@ -5,7 +5,7 @@ const linguist = require('linguist-js');
 const { logError, logInfo } = require("../utils/logger.js");
 const { generatePermission } = require("../utils/permissionManager.js");
 
-const RabbitMQClient = require("../services/rabbitmq.js");
+const rabbitMQService = require("../services/rabbitmq.js");
 
 // Fetches the project by name
 async function getProjectByName(req, res) {
@@ -62,10 +62,8 @@ async function transpileProject_v2(req, res) {
             status: 'pending'
         };
 
-        // Connect to RabbitMQ 
-        const rabbit = RabbitMQClient.getInstance();
-        await rabbit.connect(); 
-        await rabbit.sendToQueue(job);
+        // Send to RabbitMQ 
+        await rabbitMQService.sendToQueue('transpile_jobs', job);
         logInfo(`Job queued for transpilation: ${project.title}`);
 
         return res.status(200).json({
@@ -73,7 +71,7 @@ async function transpileProject_v2(req, res) {
             jobId: `${job.userId}_${job.timestamp}`
         });
     } catch (error) {
-        logError("Error queueing transpilation job:", error);
+        logError(`Error queueing transpilation job: ${error}`);
         return res.status(500).json("Error occurred while queueing the transpilation job");
     }
 }

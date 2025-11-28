@@ -8,7 +8,6 @@ const https = require('https');
 const fs = require('fs');
 const session = require('express-session');
 require('dotenv').config();
-const pubSubService = require('./services/pubSubService');
 const { initiateServices } = require('./services/serviceManager');
 
 const authRoutes = require("./routes/auth.js");
@@ -90,14 +89,31 @@ app.use("/v2", v2Routes);
 app.use("/events", sseRoutes);
 // app.use("/git")
 
-app.use("/bundle", express.static(path.join(process.cwd(), process.env.BUNDLED_PROJECT_DEST)));
-app.use("/public", express.static(path.join(process.cwd(), process.env.USER_FILE_DEST)));
-app.use("/banner", express.static(path.join(process.cwd(), process.env.PROJECT_FILE_DEST)));
+
+// Static Routes
+app.use("/bundle", (req, res, next) => {
+  logSystem(`Request for bundle: ${req.originalUrl}, ${JSON.stringify(req.params)}`);
+  next();
+}, express.static(path.join(process.cwd(), process.env.BUNDLED_PROJECT_DEST)));
+
+app.use("/public", (req, res, next) => {
+  logSystem(`Request for public file: ${req.originalUrl}`);
+  next();
+}, express.static(path.join(process.cwd(), process.env.USER_FILE_DEST)));
+
+app.use("/banner", (req, res, next) => {
+  logSystem(`Request for banner: ${req.originalUrl}`);
+  next();
+}, express.static(path.join(process.cwd(), process.env.PROJECT_FILE_DEST)));
 
 // For testing only
 app.get("/test", (req, res) => {
-  return res.status(200).json({"msg": "hello"})
+  return res.status(200).json({ "msg": "hello" })
 })
+// app.use("/temp", (req, res, next) => {
+//   logSystem(`Request for temp: ${req.originalUrl}`);
+//   next();
+// }, express.static(path.join(process.cwd())));
 
 
 if (process.env.MODE == "dev") {

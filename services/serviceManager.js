@@ -3,14 +3,14 @@ const { redisService } = require("./redis");
 const { transpileManager } = require("./transpileManager");
 
 const pubSubService = require("./pubSubService");
-const RabbitMQClient = require("./rabbitmq")
+const rabbitMQService = require("./rabbitmq")
 
 async function initiateServices(){
     try {
         await redisService.ready;
         await pubSubService.ready;
 
-        await RabbitMQClient.getInstance().connect();
+        await rabbitMQService.readyPromise;
 
         await transpileManager();
         await startDatabase();

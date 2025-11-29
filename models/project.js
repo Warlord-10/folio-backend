@@ -16,8 +16,7 @@ const projectSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 
-// MIDDLEWARE
-
+// ### MIDDLEWARES
 // Adding a logical root folder to the project
 projectSchema.pre('save', async function (next) {
   if (this.isNew) {

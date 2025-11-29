@@ -72,21 +72,6 @@ async function loginUser(req, res) {
     }
 }
 
-async function getSession(req, res) {
-    try {
-        logInfo("getSession");
-
-        if (req.session?.user) {
-            return res.status(200).json({ user: req.session.user });
-        } else {
-            return res.status(401).send("No active session");
-        }
-    } catch (error) {
-        logError(error);
-        return res.status(500).send("Error fetching session");
-    }
-}
-
 async function logoutUser(req, res) {
     try {
         logInfo("logoutUser");
@@ -104,6 +89,5 @@ async function logoutUser(req, res) {
 module.exports = {
     registerUser,
     loginUser,
-    getSession,
     logoutUser,
 };

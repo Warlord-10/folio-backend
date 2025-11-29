@@ -3,7 +3,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const { ProgressPlugin } = require('webpack');
 
-function getWebpackConfig(entry, output, progressStreamCallback){
+function getWebpackConfig(entry, output, progressStreamCallback) {
     const config = {
         entry: [
             path.join(process.cwd(), process.env.PROJECT_FILE_DEST, entry, "index.jsx")
@@ -76,7 +76,7 @@ function getWebpackConfig(entry, output, progressStreamCallback){
                 templateContent: `
               <!DOCTYPE html>
               <html lang="en">
-              <base href="${process.env.BACKEND_DOMAIN ? "https://" + process.env.BACKEND_DOMAIN : "http://localhost"}:3005/bundle/${output}/">
+              <base href="${process.env.BACKEND_DOMAIN ? "https://" + process.env.BACKEND_DOMAIN : "https://localhost"}:3005/bundle/${output}/">
               <head>
                   <meta charset="UTF-8">
                   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -95,7 +95,7 @@ function getWebpackConfig(entry, output, progressStreamCallback){
                 activeModules: false,
                 entries: true,
                 handler(percentage, message, ...args) {
-                    progressStreamCallback({percentage, message, ...args})
+                    progressStreamCallback({ percentage, message, ...args })
                 },
                 modules: true,
                 modulesCount: 0,
@@ -123,4 +123,4 @@ function getWebpackConfig(entry, output, progressStreamCallback){
     return config;
 }
 
-module.exports = {getWebpackConfig};
+module.exports = { getWebpackConfig };

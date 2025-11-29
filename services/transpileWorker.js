@@ -70,18 +70,18 @@ async function main() {
   const { projectId, projectTitle, userId } = workerData;
 
   const config = getWebpackConfig(
-      entry = path.join(userId, projectTitle),
-      output = userId,
-      progressStreamCallback = async (data) => {
-        logSystem(`Sending data to main thread`, "WORKER THREAD")
-        console.log("PUBLISHING DATA", data)
-        parentPort.postMessage({
-          type: 'progress',
-          data: data,
-          id: `portfolio-logs:${projectId}`
-        })
-      }
-    );
+    entry = path.join(userId, projectTitle),
+    output = userId,
+    progressStreamCallback = async (data) => {
+      logSystem(`Sending data to main thread`, "WORKER THREAD")
+      console.log("PUBLISHING DATA", data)
+      parentPort.postMessage({
+        type: 'progress',
+        data: data,
+        id: `portfolio-logs:${projectId}`
+      })
+    }
+  );
 
   // Running main webpack transpiler
   webpack(config, (err, stats) => {
@@ -93,6 +93,7 @@ async function main() {
     const full_stats = stats.toString({
       colors: true
     });
+    logSystem(`Transpilation completed for project: ${projectTitle}`, "WORKER THREAD")
 
     parentPort.postMessage({
       type: 'done',

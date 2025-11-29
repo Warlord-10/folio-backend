@@ -16,6 +16,8 @@ const fileSchema = new mongoose.Schema({
   size: { type: Number, default: 0 },
 }, { timestamps: true });
 
+
+// ### MIDDLEWARES
 fileSchema.pre('save', async function (next) {
   // this.createdAt = moment().tz('Asia/Kolkata').toDate();
   this.name = this.name.replace(/\s+/g, '_');
@@ -55,6 +57,8 @@ const folderSchema = new mongoose.Schema({
   absPath: { type: String, default: null },
 }, { timestamps: true });
 
+
+// ### MIDDLEWARES
 folderSchema.pre('save', async function (next) {
   // this.createdAt = moment().tz('Asia/Kolkata').toDate();
   this.name = this.name.replace(/\s+/g, '_');

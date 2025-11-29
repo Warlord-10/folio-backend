@@ -1,53 +1,12 @@
 const PortfolioModel = require("../models/portfolio.js");
 const LikeModel = require('../models/likes.js');
-const {logError, logInfo} = require("../utils/logger.js");
-
-// async function fetchAllPortfolios(req, res) {
-//     logger("fetchAllPortfolios");
-//     try {
-//         const userId = req.user?.userId || null;
-//         const page = parseInt(req.query.page) || 1;
-//         const limit = 10; // Number of items per page
-
-//         // Calculate the number of items to skip
-//         const skip = (page - 1) * limit;
-
-//         // Get total number of items
-//         const total = await PortfolioModel.countDocuments();
-
-//         // Calculate total pages
-//         const totalPages = Math.ceil(total / limit);
-
-//         // Fetch the items for the current page
-//         const response = await PortfolioModel.find()
-//             .skip(skip)
-//             .limit(limit)
-//             // .exec();
-
-//         // Create pagination response
-//         const pagination = {
-//             totalItems: total,
-//             currentPage: page,
-//             itemsPerPage: limit,
-//             totalPages: totalPages
-//         };
-
-//         return res.status(200).json({
-//             data: response,
-//             pagination: pagination
-//         });
-
-//     } catch (error) {
-//         logger(error)
-//         return res.status(500).json({ message: "Error fetching portfolios" });
-//     }
-// }
+const { logError, logInfo } = require("../utils/logger.js");
 
 
-// Fetch all portfolios in the DB
+// Fetch all portfolios from the DB
 async function fetchAllPortfolios(req, res) {
-    logInfo("fetchAllPortfolios");
     try {
+        logInfo("fetchAllPortfolios");
         const userId = req.user?.userId || null; // Assuming user's ID is available in req.user
         const page = parseInt(req.query.page) || 1;
         const limit = 10; // Number of items per page
@@ -60,9 +19,9 @@ async function fetchAllPortfolios(req, res) {
 
         // Fetch the IDs of portfolios liked by the current user
         const likedPortfolioIds = await LikeModel.find({ user_id: userId })
-                                                .select('portfolio_id')
-                                                .lean()
-                                                .then(results => results.map(result => result.portfolio_id));
+            .select('portfolio_id')
+            .lean()
+            .then(results => results.map(result => result.portfolio_id));
 
 
         // Fetch the items for the current page with an additional 'isLiked' field
@@ -104,6 +63,18 @@ async function fetchAllPortfolios(req, res) {
 }
 
 
+// Fetch featured portfolios
+async function fetchFeaturedPortfolios(req, res) {
+    logInfo("fetchFeaturedPortfolios");
+    try {
+        const featuredPortfolios = null
+        return res.status(200).json(featuredPortfolios);
+    } catch (error) {
+        logError(error);
+        return res.status(500).json({ message: "Error fetching featured portfolios from cache" });
+    }
+}
+
 
 // Add a like
 async function addLike(req, res) {
@@ -131,6 +102,7 @@ async function addLike(req, res) {
         res.status(500).json("Error occured in liking the portfolio");
     }
 }
+
 
 // Remove a like
 async function removeLike(req, res) {

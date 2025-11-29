@@ -6,7 +6,6 @@ const cookieParser = require('cookie-parser');
 const path = require("path");
 const https = require('https');
 const fs = require('fs');
-const session = require('express-session');
 require('dotenv').config();
 const { initiateServices } = require('./services/serviceManager');
 
@@ -61,20 +60,6 @@ app.use(cors({
   ],  // allows request from 3000, true/* indicate all origin
   methods: ["GET", "PATCH", "POST", "DELETE", "PUT"],
   credentials: true,
-}));
-
-
-// Session
-app.use(session({
-  secret: process.env.MODE == "dev" ? "session-key" : process.env.SESSION_KEY,
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: true, // Set to true in production if using HTTPS
-    maxAge: 1000 * 60 * 60 * 24, // Session lifetime (24 hours)
-    sameSite: "Strict",
-    httpOnly: true,
-  },
 }));
 
 

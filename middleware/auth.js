@@ -1,7 +1,8 @@
 const { setAuthCookies } = require("../utils/authUtils");
 const { verifyAccessToken, verifyRefreshToken } = require("../utils/jwt");
 
-function verifyRefreshTokenMiddleWare(req, res, next){
+// Verifies the refresh token
+function verifyRefreshTokenMiddleWare(req, res, next) {
     try {
         if (!req.cookies || !req.cookies.refreshToken) {
             throw new Error("No Refresh Token Provided");
@@ -10,7 +11,7 @@ function verifyRefreshTokenMiddleWare(req, res, next){
         const refresh_token = req.cookies.refreshToken;
         const decoded_refresh_token = verifyRefreshToken(refresh_token);
 
-        if(!decoded_refresh_token.user){
+        if (!decoded_refresh_token.user) {
             throw new Error("Invalid Refresh Token");
         }
 
@@ -22,6 +23,8 @@ function verifyRefreshTokenMiddleWare(req, res, next){
     }
 }
 
+
+// Verifies the access token
 async function verifyAccessTokenMiddleWare(req, res, next) {
     try {
         if (!req.cookies || !req.cookies.accessToken) {
@@ -42,14 +45,14 @@ async function verifyAccessTokenMiddleWare(req, res, next) {
             // Refresh Token Exists
             if (req.cookies && req.cookies.refreshToken) {
                 const decoded_refresh_token = verifyRefreshToken(req.cookies.refreshToken);
-                
+
                 if (!decoded_refresh_token.user) {
                     throw new Error("Invalid Refresh Token");
                 }
 
                 setAuthCookies(res, decoded_refresh_token.user);
                 req.user = decoded_refresh_token.user;
-            } 
+            }
             // No Refresh Token
             else {
                 req.user = { user: null };
@@ -65,4 +68,4 @@ async function verifyAccessTokenMiddleWare(req, res, next) {
 }
 
 
-module.exports = {verifyRefreshTokenMiddleWare, verifyAccessTokenMiddleWare}
+module.exports = { verifyRefreshTokenMiddleWare, verifyAccessTokenMiddleWare }

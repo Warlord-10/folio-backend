@@ -126,22 +126,6 @@ async function updateUserById(req, res){
     }
 }
 
-// Deprecated
-async function getUserProfilePage(req, res){
-    try {
-        logInfo("getUserProfilePage");
-        const data = await UserModel.findById(req.params.uid);
-        if(data.user_portfolio === "undefined" || data.user_portfolio === "null"){
-            return res.status(404).json("No Folio Set");
-        }
-
-        const inputDir = `${data._id}/bundle.js`
-
-        return res.status(200).json(inputDir)
-    } catch (error) {
-        return res.status(404).json("Error Occured");
-    }
-}
 
 // Search for a user
 async function findUser(req, res){
@@ -172,6 +156,5 @@ module.exports = {
     delUserById,
     updateUserById,
 
-    getUserProfilePage,
     findUser,
 }

@@ -1,20 +1,19 @@
 const express = require("express");
 const { getUserProjects, getProjectById, delProjectById, createProject, updateProjectById, transpileProject } = require("../controllers/project");
-const {verifyRefreshTokenMiddleWare, verifyAccessTokenMiddleWare} = require("../middleware/auth");
+const { SoftAuthenticationMiddleWare, HardAuthenticationMiddleWare } = require("../middleware/auth");
 const { bannerUploadMiddleware } = require("../middleware/multer");
-const {transpileProject_v2} = require("../controllers_v2/project_v2");
+const { transpileProject_v2 } = require("../controllers_v2/project_v2");
 
 
 const router = express.Router();
-router.use(verifyAccessTokenMiddleWare);
 
-router.get("/:uid", getUserProjects);
+router.get("/:uid", SoftAuthenticationMiddleWare, getUserProjects);
 
-router.post("/transpile/:pid", transpileProject_v2);
-router.post("/s", createProject);
-router.get("/s/:pid", getProjectById);
-router.patch("/s/:pid", bannerUploadMiddleware.single('banner'), updateProjectById);
-router.delete("/s/:pid", delProjectById);
+router.post("/transpile/:pid", HardAuthenticationMiddleWare, transpileProject_v2);
+router.post("/s", HardAuthenticationMiddleWare, createProject);
+router.get("/s/:pid", HardAuthenticationMiddleWare, getProjectById);
+router.patch("/s/:pid", HardAuthenticationMiddleWare, bannerUploadMiddleware.single('banner'), updateProjectById);
+router.delete("/s/:pid", HardAuthenticationMiddleWare, delProjectById);
 
 
 

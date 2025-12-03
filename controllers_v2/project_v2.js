@@ -11,18 +11,25 @@ const rabbitMQService = require("../services/rabbitmq.js");
 async function getProjectByName(req, res) {
     try {
         logInfo("getProjectByName");
+        const userId = req.user?._id || null;
+
         const data = await ProjectModel.findOne({ owner_id: req.params.uid, title: req.params.pname }).populate("owner_id");
 
         if (!data) {
             return res.status(404).json('No Project Found');
         }
 
-        const { files, languages, unknown } = await linguist(path.join(process.cwd(), process.env.PROJECT_FILE_DEST, data.owner_id._id.toHexString(), data.title))
+        const { files, languages, unknown } = await linguist(
+            path.join(process.cwd(),
+                process.env.PROJECT_FILE_DEST,
+                data.owner_id._id.toHexString(),
+                data.title
+            ))
 
         return res.status(200).json({
             data: data,
             metadata: languages,
-            permission: generatePermission(req.user._id, req.params.uid)
+            permission: generatePermission(userId, req.params.uid)
         });
     } catch (error) {
         logError(error)
@@ -35,15 +42,19 @@ async function getProjectByName(req, res) {
 async function transpileProject_v2(req, res) {
     try {
         logInfo("transpileProject_v2");
-        const project = await ProjectModel.findById(req.params.pid);
-        const user = await UserModel.findById(req.user._id);
+        const userId = req.user?._id || null;
 
+        // Check if the user has permission to transpile the project
+        const project = await ProjectModel.findById(req.params.pid);
         if (!project) {
             return res.status(404).json("Project Not Found");
         }
-        if (generatePermission(project.owner_id, req.user._id) != "OWNER") {
+        if (generatePermission(userId, project.owner_id) != "OWNER") {
             return res.status(401).json("Permission Denied");
         }
+
+        // Check if the user has set this project as the portfolio
+        const user = await UserModel.findById(userId);
         if (!user?.user_portfolio) {
             return res.status(500).json("No default project");
         }

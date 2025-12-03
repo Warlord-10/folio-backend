@@ -3,6 +3,7 @@ const UserModel = require("../models/user");
 const { logError, logInfo } = require("../utils/logger.js");
 const { setAuthCookies } = require("../utils/authUtils.js");
 const { resetCookieSetting } = require('../middleware/cookieConfig.js');
+const { verifyRefreshToken } = require('../utils/jwt.js');
 
 async function registerUser(req, res) {
     try {
@@ -12,13 +13,13 @@ async function registerUser(req, res) {
 
         // Validate request body
         if (!email || !password || !name) {
-            return res.status(400).json({error: "All fields are required"});
+            return res.status(400).json({ error: "All fields are required" });
         }
 
         // Check if user already exists
         const existingUser = await UserModel.findOne({ email });
         if (existingUser) {
-            return res.status(409).json({error: "Email already in use"});
+            return res.status(409).json({ error: "Email already in use" });
         }
 
         // Create new user
@@ -33,7 +34,7 @@ async function registerUser(req, res) {
         });
     } catch (error) {
         logError(error);
-        return res.status(500).json({error: "User creation failed"});
+        return res.status(500).json({ error: "User creation failed" });
     }
 }
 
@@ -44,19 +45,19 @@ async function loginUser(req, res) {
         const { email, password } = req.body;
 
         if (!email || !password) {
-            return res.status(400).json({error: "Email and password are required"});
+            return res.status(400).json({ error: "Email and password are required" });
         }
 
         // Check if user exists
         const user = await UserModel.findOne({ email }, "+password");
         if (!user) {
-            return res.status(404).json({error: "User not found"});
+            return res.status(404).json({ error: "User not found" });
         }
 
         // Verify password
         const passwordMatch = await bcrypt.compare(password, user.password);
         if (!passwordMatch) {
-            return res.status(401).json({error: "Incorrect password"});
+            return res.status(401).json({ error: "Incorrect password" });
         }
 
         // Generate JWT tokens & set auth cookies
@@ -68,7 +69,7 @@ async function loginUser(req, res) {
         });
     } catch (error) {
         logError(error);
-        return res.status(500).json({error: "Login failed"});
+        return res.status(500).json({ error: "Login failed" });
     }
 }
 
@@ -79,10 +80,40 @@ async function logoutUser(req, res) {
         res.cookie("accessToken", null, resetCookieSetting);
         res.cookie("refreshToken", null, resetCookieSetting);
 
-        return res.status(200).json({message: "Logout successful"});
+        return res.status(200).json({ message: "Logout successful" });
     } catch (error) {
         logError(error);
-        return res.status(500).json({error: "Logout error"});
+        return res.status(500).json({ error: "Logout error" });
+    }
+}
+
+async function getNewAccessToken(req, res) {
+    try {
+        logInfo("getNewAccessToken");
+
+        const { refreshToken } = req.cookies;
+        if (!refreshToken) {
+            return res.status(401).json({ error: "Refresh token not found" });
+        }
+
+        // Verify refresh token
+        const decoded = verifyRefreshToken(refreshToken);
+        if (!decoded) {
+            return res.status(401).json({ error: "Invalid refresh token" });
+        }
+
+        // const user = await UserModel.findById(decoded._id);
+        // if (!user) {
+        //     return res.status(404).json({ error: "User not found" });
+        // }
+
+        // Generate new JWT tokens & set auth cookies
+        setAuthCookies(res, decoded);
+
+        return res.status(200).json({ message: "Token refreshed successfully" });
+    } catch (error) {
+        logError(error);
+        return res.status(500).json({ error: "Refresh token error" });
     }
 }
 
@@ -90,4 +121,5 @@ module.exports = {
     registerUser,
     loginUser,
     logoutUser,
+    getNewAccessToken,
 };

@@ -64,6 +64,12 @@ app.use(cors({
 
 
 // Routes
+// Default soft authorization
+app.use((req, res, next) => {
+  req.user = null;
+  next();
+});
+
 app.use("/auth", authRoutes);
 app.use("/user", userRoutes);
 app.use("/projects", projectRoutes);

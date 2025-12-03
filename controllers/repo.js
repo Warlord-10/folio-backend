@@ -8,8 +8,8 @@ const { logError, logInfo } = require("../utils/logger.js");
 async function getFolder(req, res) {
     try {
         logInfo("getFolder");
-        const data = await FolderModel.findById(req.params.fid);
 
+        const data = await FolderModel.findById(req.params.fid);
         if (!data) {
             return res.status(404).json('No Folder Found');
         }
@@ -104,8 +104,8 @@ async function removeFolder(req, res) {
 async function getFileData(req, res) {
     try {
         logInfo("getFileData");
-        const file = await FileModel.findById(req.params.fid);
 
+        const file = await FileModel.findById(req.params.fid);
         if (!file) {
             return res.status(404).json('File not found');
         }

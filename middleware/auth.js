@@ -1,74 +1,50 @@
 const { setAuthCookies } = require("../utils/authUtils");
 const { verifyAccessToken, verifyRefreshToken } = require("../utils/jwt");
 
-// Verifies the refresh token
-// function verifyRefreshTokenMiddleWare(req, res, next) {
-//     try {
-//         if (!req.cookies || !req.cookies.refreshToken) {
-//             throw new Error("No Refresh Token Provided");
-//         }
+// If the access token is not present then it will provide guest access
+// The req.user can be null or the user itself
+function SoftAuthenticationMiddleWare(req, res, next) {
+    const accessToken = req.cookies?.accessToken;
+    const refreshToken = req.cookies?.refreshToken;
 
-//         const refresh_token = req.cookies.refreshToken;
-//         const decoded_refresh_token = verifyRefreshToken(refresh_token);
+    // 1. If NO Access Token is present
+    if (!accessToken) {
+        // CHECK: Is this a Guest or an Expired User?
+        if (refreshToken) {
+            // It's a User with a dead access token. Force Refresh.
+            return res.status(401).json({ message: "Refresh Required" });
+        }
 
-//         if (!decoded_refresh_token.user) {
-//             throw new Error("Invalid Refresh Token");
-//         }
+        // It's a True Guest. Allow entry.
+        req.user = null;
+        return next();
+    }
 
-//         req.user = decoded_refresh_token.user;
-//         return next();
-//     } catch (error) {
-//         req.user = { user: null };
-//         return next();
-//     }
-// }
-
-
-// Verifies the access token
-// async function verifyAccessTokenMiddleWare(req, res, next) {
-//     try {
-//         if (!req.cookies || !req.cookies.accessToken) {
-//             throw new Error("No Access Token Present");
-//         }
-
-//         const access_token = req.cookies.accessToken;
-//         const decoded_access_token = verifyAccessToken(access_token);
-
-//         if (!decoded_access_token.user) {
-//             throw new Error("Invalid Access Token");
-//         }
-
-//         req.user = decoded_access_token.user;
-//         return next();
-//     } catch (error) {
-//         req.user = { user: null };
-//         return next();
-//     }
-// }
-
-async function SoftAuthenticationMiddleWare(req, res, next) {
+    // 2. Access Token IS present
     try {
-        if (!req.cookies || !req.cookies.accessToken) {
-            req.user = { user: null };
-            return next();
-        }
-
-        const access_token = req.cookies.accessToken;
-        const decoded_access_token = verifyAccessToken(access_token);
-
-        if (!decoded_access_token.user) {
-            throw new Error("Invalid Access Token");
-        }
-
-        req.user = decoded_access_token.user;
+        const decoded = verifyAccessToken(accessToken);
+        req.user = decoded.user;
         return next();
     } catch (error) {
-        req.user = { user: null };
+        // Access token is present but invalid/expired.
+
+        // CHECK: Do we have a refresh token?
+        if (refreshToken) {
+            // Force refresh so they stay logged in
+            return res.status(401).json({ message: "Refresh Required" });
+        }
+
+        // Weird edge case: Invalid access token and NO refresh token.
+        // Treat as Guest.
+        req.user = null;
         return next();
     }
 }
 
-async function HardAuthenticationMiddleWare(req, res, next) {
+
+// If the access token is not present then it will require re-authentication
+// The req.user has to be the user itself
+function HardAuthenticationMiddleWare(req, res, next) {
     try {
         if (!req.cookies || !req.cookies.accessToken) {
             throw new Error("No Access Token Present");
@@ -78,7 +54,7 @@ async function HardAuthenticationMiddleWare(req, res, next) {
         const decoded_access_token = verifyAccessToken(access_token);
 
         if (!decoded_access_token.user) {
-            throw new Error("Invalid Access Token");
+            return res.status(401).json({ message: "Unauthorized" });
         }
 
         req.user = decoded_access_token.user;
@@ -90,8 +66,6 @@ async function HardAuthenticationMiddleWare(req, res, next) {
 
 
 module.exports = {
-    // verifyRefreshTokenMiddleWare, 
-    // verifyAccessTokenMiddleWare, 
     SoftAuthenticationMiddleWare,
     HardAuthenticationMiddleWare
 }

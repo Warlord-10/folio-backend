@@ -7,7 +7,8 @@ const { logError, logInfo } = require("../utils/logger.js");
 async function fetchAllPortfolios(req, res) {
     try {
         logInfo("fetchAllPortfolios");
-        const userId = req.user?.userId || null; // Assuming user's ID is available in req.user
+        const userId = req.user?._id || null; // Assuming user's ID is available in req.user
+
         const page = parseInt(req.query.page) || 1;
         const limit = 10; // Number of items per page
 
@@ -81,7 +82,7 @@ async function addLike(req, res) {
     logInfo("addLike")
     try {
         const { portfolioId } = req.params;
-        const userId = req.user?.userId;
+        const userId = req.user?._id || null;
 
         // Create a new like
         const res = await LikeModel.create({
@@ -109,7 +110,7 @@ async function removeLike(req, res) {
     logInfo("removeLike");
     try {
         const { portfolioId } = req.params;
-        const userId = req.user?.userId;
+        const userId = req.user?._id || null;
 
         // Find and remove the like
         await LikeModel.findOneAndDelete({

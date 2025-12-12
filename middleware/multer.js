@@ -52,7 +52,6 @@ const fileUploadMiddleware = multer({storage: multer.diskStorage({
 const avatarUploadMiddleware = multer({storage: multer.diskStorage({
   destination: async function (req, file, cb) {
     try {
-      console.log("i am here")
       if(!file) {
         return cb(new Error("No file found"), false);
       }
@@ -68,7 +67,6 @@ const avatarUploadMiddleware = multer({storage: multer.diskStorage({
   },
   filename: function (req, file, cb) {
     try {
-      console.log("i am here 2")
       return cb(null, "avatar.jpeg")
     } catch (error) {
       logError(error);

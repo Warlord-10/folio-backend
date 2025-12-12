@@ -74,7 +74,6 @@ async function main() {
     output = userId,
     progressStreamCallback = async (data) => {
       logSystem(`Sending data to main thread`, "WORKER THREAD")
-      console.log("PUBLISHING DATA", data)
       parentPort.postMessage({
         type: 'progress',
         data: data,

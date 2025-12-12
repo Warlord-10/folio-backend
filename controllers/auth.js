@@ -93,26 +93,22 @@ async function getNewAccessToken(req, res) {
 
         const { refreshToken } = req.cookies;
         if (!refreshToken) {
-            return res.status(401).json({ error: "Refresh token not found" });
+            return res.status(401).json({ error: "Refresh token not found", code: "REFRESH_TOKEN_EXPIRED" });
         }
 
         // Verify refresh token
         const decoded = verifyRefreshToken(refreshToken);
         if (!decoded) {
-            return res.status(401).json({ error: "Invalid refresh token" });
+            return res.status(401).json({ error: "Invalid refresh token", code: "REFRESH_TOKEN_EXPIRED" });
         }
-
-        // const user = await UserModel.findById(decoded._id);
-        // if (!user) {
-        //     return res.status(404).json({ error: "User not found" });
-        // }
 
         // Generate new JWT tokens & set auth cookies
         setAuthCookies(res, decoded);
 
         return res.status(200).json({ message: "Token refreshed successfully" });
     } catch (error) {
-        logError(error);
+        res.clearCookie("accessToken");
+        res.clearCookie("refreshToken");
         return res.status(500).json({ error: "Refresh token error" });
     }
 }

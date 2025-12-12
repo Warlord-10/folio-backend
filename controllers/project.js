@@ -3,8 +3,6 @@ const ProjectModel = require("../models/project");
 const UserModel = require("../models/user.js");
 const PortfolioModel = require("../models/portfolio.js")
 
-const webpackConfig = require('../webpack.config.js');
-const webpack = require('webpack');
 const { logError, logInfo } = require("../utils/logger.js");
 const { generatePermission } = require("../utils/permissionManager.js");
 
@@ -117,7 +115,7 @@ async function delProjectById(req, res) {
 // updates a project
 async function updateProjectById(req, res) {
     try {
-        logInfo("updateProjectById")
+        logInfo("updateProjectById", req.body)
         const UserId = req.user?._id || null;
         if (!UserId) {
             return res.status(401).json('Unauthorized');
@@ -142,63 +140,7 @@ async function updateProjectById(req, res) {
 
 async function transpileProject(req, res) {
     try {
-        logInfo("transpileProject", req.params);
-        const UserId = req.user?._id || null;
-        if (!UserId) {
-            return res.status(401).json('Unauthorized');
-        }
-
-        const project = await ProjectModel.findById(req.params.pid);
-        const user = await UserModel.findById(UserId);
-        if (!project) {
-            return res.status(404).json("Project Not Found");
-        }
-        if (generatePermission(UserId, project.owner_id) != "OWNER") {
-            return res.status(401).json("Permission Denied");
-        }
-        if (!user?.user_portfolio) {
-            return res.status(500).json("No default project");
-        }
-
-        // configs for transpiling the project
-        const inputDir = path.join(process.cwd(), process.env.PROJECT_FILE_DEST, `${project.owner_id}`, `${project.title}`, "index.jsx");
-
-        const outputDir = path.join(process.cwd(), process.env.BUNDLED_PROJECT_DEST, `${project.owner_id}`);
-
-        const customWebpackConfig = webpackConfig(
-            path.join(project.owner_id.toHexString(), project.title), project.owner_id.toHexString()
-        )
-
-
-        // Convert webpack to promise-based operation
-        const stats = await new Promise((resolve, reject) => {
-            logInfo("Webpack transpiling started...")
-            webpack(customWebpackConfig, (err, stats) => {
-                if (err) reject(err);
-                else resolve(stats);
-            });
-        });
-
-        if (stats.hasErrors()) {
-            logError(stats.toJson().errors);
-            return res.status(500).json(stats.toJson().errors);
-        }
-
-        logInfo("Project transpiled successfully");
-        const result = await PortfolioModel.findOneAndUpdate(
-            { _id: project.owner_id },
-            {
-                $set: {
-                    owner_name: user.name,
-                    title: project.title,
-                    description: project.description
-                }
-            },
-            { upsert: true }
-        );
-
         return res.status(200).json("compiled");
-
     } catch (error) {
         logError(error)
         return res.status(500).json(error)

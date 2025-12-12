@@ -186,10 +186,10 @@ async function updateFile(req, res) {
         }
 
         // Update file content if data is provided
-        if (req.body.data) {
+        if (req.body.content) {
             const filePath = path.join(process.cwd(), process.env.PROJECT_FILE_DEST, file.relPath);
 
-            await fs.writeFile(filePath, req.body.data, (err) => {
+            await fs.writeFile(filePath, req.body.content, (err) => {
                 if (err) {
                     return res.status(500).json("Failed to update file content");
                 }
@@ -200,6 +200,11 @@ async function updateFile(req, res) {
                 fileId: req.params.fid
             });
         }
+
+        return res.status(200).json({
+            message: "No changes were present",
+            fileId: req.params.fid
+        });
 
     } catch (error) {
         logError(error);

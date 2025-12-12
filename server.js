@@ -9,6 +9,8 @@ const fs = require('fs');
 require('dotenv').config();
 const { initiateServices } = require('./services/serviceManager');
 
+const { apiLoggerMiddleware } = require("./middleware/apiLogger.js");
+
 const authRoutes = require("./routes/auth.js");
 const userRoutes = require("./routes/user.js");
 const projectRoutes = require("./routes/project.js");
@@ -43,6 +45,7 @@ logSystem(`CWD: ${process.cwd()}`)
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(apiLoggerMiddleware);
 app.use(cors({
   origin: [
     // Localhost

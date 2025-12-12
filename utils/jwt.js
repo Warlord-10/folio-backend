@@ -15,7 +15,6 @@ function generateRefreshToken(data) {
 }
 function verifyRefreshToken(tok) {
     try {
-        console.log(jwt.verify(tok, process.env.REFRESH_TOKEN))
         return jwt.verify(tok, process.env.REFRESH_TOKEN).user;
     } catch (err) {
         throw err;
@@ -36,7 +35,6 @@ function generateAccessToken(data) {
 }
 function verifyAccessToken(tok) {
     try {
-        console.log(jwt.verify(tok, process.env.ACCESS_TOKEN))
         return jwt.verify(tok, process.env.ACCESS_TOKEN);
     } catch (err) {
         throw err;

@@ -11,8 +11,7 @@ function SoftAuthenticationMiddleWare(req, res, next) {
     if (!accessToken) {
         // CHECK: Is this a Guest or an Expired User?
         if (refreshToken) {
-            // It's a User with a dead access token. Force Refresh.
-            return res.status(401).json({ message: "Refresh Required" });
+            return res.status(401).json({ message: "Refresh Required", code: "ACCESS_TOKEN_EXPIRED" });
         }
 
         // It's a True Guest. Allow entry.
@@ -26,15 +25,11 @@ function SoftAuthenticationMiddleWare(req, res, next) {
         req.user = decoded.user;
         return next();
     } catch (error) {
-        // Access token is present but invalid/expired.
-
         // CHECK: Do we have a refresh token?
         if (refreshToken) {
-            // Force refresh so they stay logged in
-            return res.status(401).json({ message: "Refresh Required" });
+            return res.status(401).json({ message: "Refresh Required", code: "ACCESS_TOKEN_EXPIRED" });
         }
 
-        // Weird edge case: Invalid access token and NO refresh token.
         // Treat as Guest.
         req.user = null;
         return next();
@@ -60,7 +55,11 @@ function HardAuthenticationMiddleWare(req, res, next) {
         req.user = decoded_access_token.user;
         return next();
     } catch (error) {
-        return res.status(401).json({ message: "Unauthorized" });
+        // Check if we have a refresh token to distinguish between "expired access" and "no auth"
+        if (req.cookies && req.cookies.refreshToken) {
+            return res.status(401).json({ message: "Access Token Expired", code: "ACCESS_TOKEN_EXPIRED" });
+        }
+        return res.status(401).json({ message: "Unauthorized", code: "AUTH_REQUIRED" });
     }
 }
 

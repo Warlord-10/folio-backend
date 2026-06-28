@@ -1,28 +1,45 @@
 const { setAuthCookies } = require("../utils/authUtils");
 const { verifyAccessToken, verifyRefreshToken } = require("../utils/jwt");
 
-function verifyRefreshTokenMiddleWare(req, res, next){
+// If the access token is not present then it will provide guest access
+// The req.user can be null or the user itself
+function SoftAuthenticationMiddleWare(req, res, next) {
+    const accessToken = req.cookies?.accessToken;
+    const refreshToken = req.cookies?.refreshToken;
+
+    // 1. If NO Access Token is present
+    if (!accessToken) {
+        // CHECK: Is this a Guest or an Expired User?
+        if (refreshToken) {
+            return res.status(401).json({ message: "Refresh Required", code: "ACCESS_TOKEN_EXPIRED" });
+        }
+
+        // It's a True Guest. Allow entry.
+        req.user = null;
+        return next();
+    }
+
+    // 2. Access Token IS present
     try {
-        if (!req.cookies || !req.cookies.refreshToken) {
-            throw new Error("No Refresh Token Provided");
-        }
-
-        const refresh_token = req.cookies.refreshToken;
-        const decoded_refresh_token = verifyRefreshToken(refresh_token);
-
-        if(!decoded_refresh_token.user){
-            throw new Error("Invalid Refresh Token");
-        }
-
-        req.user = decoded_refresh_token.user;
-        next();
+        const decoded = verifyAccessToken(accessToken);
+        req.user = decoded.user;
+        return next();
     } catch (error) {
-        res.status(401).json({ error: error.message });
-        return;
+        // CHECK: Do we have a refresh token?
+        if (refreshToken) {
+            return res.status(401).json({ message: "Refresh Required", code: "ACCESS_TOKEN_EXPIRED" });
+        }
+
+        // Treat as Guest.
+        req.user = null;
+        return next();
     }
 }
 
-async function verifyAccessTokenMiddleWare(req, res, next) {
+
+// If the access token is not present then it will require re-authentication
+// The req.user has to be the user itself
+function HardAuthenticationMiddleWare(req, res, next) {
     try {
         if (!req.cookies || !req.cookies.accessToken) {
             throw new Error("No Access Token Present");
@@ -32,37 +49,22 @@ async function verifyAccessTokenMiddleWare(req, res, next) {
         const decoded_access_token = verifyAccessToken(access_token);
 
         if (!decoded_access_token.user) {
-            throw new Error("Invalid Access Token");
+            return res.status(401).json({ message: "Unauthorized" });
         }
 
         req.user = decoded_access_token.user;
         return next();
     } catch (error) {
-        try {
-            // Refresh Token Exists
-            if (req.cookies && req.cookies.refreshToken) {
-                const decoded_refresh_token = verifyRefreshToken(req.cookies.refreshToken);
-                
-                if (!decoded_refresh_token.user) {
-                    throw new Error("Invalid Refresh Token");
-                }
-
-                setAuthCookies(res, decoded_refresh_token.user);
-                req.user = decoded_refresh_token.user;
-            } 
-            // No Refresh Token
-            else {
-                req.user = { user: null };
-            }
-
-            return next();
-        } catch (refreshError) {
-            // If refresh token is also invalid, clear user
-            req.user = { user: null };
-            return next();
+        // Check if we have a refresh token to distinguish between "expired access" and "no auth"
+        if (req.cookies && req.cookies.refreshToken) {
+            return res.status(401).json({ message: "Access Token Expired", code: "ACCESS_TOKEN_EXPIRED" });
         }
+        return res.status(401).json({ message: "Unauthorized", code: "AUTH_REQUIRED" });
     }
 }
 
 
-module.exports = {verifyRefreshTokenMiddleWare, verifyAccessTokenMiddleWare}
+module.exports = {
+    SoftAuthenticationMiddleWare,
+    HardAuthenticationMiddleWare
+}

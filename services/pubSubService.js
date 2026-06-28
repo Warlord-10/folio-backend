@@ -6,6 +6,10 @@ class PubSubService {
         if (PubSubService.instance) return PubSubService.instance;
         PubSubService.instance = this;
 
+        // channel -> Set of listener callbacks. Lets many clients (e.g. SSE
+        // connections in different tabs) share one Redis subscription per channel.
+        this.listeners = new Map();
+
         this.ready = this.connect();
     }
 
@@ -33,27 +37,60 @@ class PubSubService {
         }
     }
 
+    // Registers a listener for a channel. Multiple listeners can share a single
+    // Redis subscription; the underlying subscribe happens only for the first one.
+    // Returns an unsubscribe function that removes just this listener.
     async subscribe(channel, callback) {
         try {
-            await this.subscriber.subscribe(channel, (message) => {
-                try {
-                    const parsed = JSON.parse(message);
-                    callback(parsed);
-                } catch (err) {
-                    logError(`PubSub callback error on channel ${channel}: ${err.message}`);
-                }
-            });
-            logInfo(`Subscribed to ${channel}`);
+            let set = this.listeners.get(channel);
+
+            if (!set) {
+                set = new Set();
+                this.listeners.set(channel, set);
+
+                // One Redis-level listener per channel fans out to all callbacks.
+                await this.subscriber.subscribe(channel, (message) => {
+                    let parsed;
+                    try {
+                        parsed = JSON.parse(message);
+                    } catch (err) {
+                        logError(`PubSub parse error on channel ${channel}: ${err.message}`);
+                        return;
+                    }
+                    for (const cb of this.listeners.get(channel) || []) {
+                        try {
+                            cb(parsed);
+                        } catch (err) {
+                            logError(`PubSub callback error on channel ${channel}: ${err.message}`);
+                        }
+                    }
+                });
+                logInfo(`Subscribed to ${channel}`);
+            }
+
+            set.add(callback);
+            return () => this.unsubscribe(channel, callback);
         } catch (error) {
             logError(`Error subscribing to ${channel}. ${error}`);
             throw error;
         }
     }
 
-    async unsubscribe(channel) {
+    // Removes a single listener. When the last listener for a channel is removed,
+    // the underlying Redis subscription is torn down. Passing no callback removes all.
+    async unsubscribe(channel, callback) {
         try {
-            await this.subscriber.unsubscribe(channel);
-            logInfo(`Unsubscribed from ${channel}`);
+            const set = this.listeners.get(channel);
+            if (!set) return;
+
+            if (callback) set.delete(callback);
+            else set.clear();
+
+            if (set.size === 0) {
+                this.listeners.delete(channel);
+                await this.subscriber.unsubscribe(channel);
+                logInfo(`Unsubscribed from ${channel}`);
+            }
         } catch (error) {
             logError(`Error unsubscribing from ${channel}. ${error}`);
             throw error;

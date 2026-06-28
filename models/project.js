@@ -15,9 +15,13 @@ const projectSchema = new mongoose.Schema({
   metadata: { type: Object, default: {} },
 }, { timestamps: true });
 
+// Indexes for the common access patterns:
+//  - find({ owner_id })            -> list a user's projects
+//  - findOne({ owner_id, title })  -> fetch a project by name (also enforces uniqueness)
+projectSchema.index({ owner_id: 1, title: 1 }, { unique: true });
 
-// MIDDLEWARE
 
+// ### MIDDLEWARES
 // Adding a logical root folder to the project
 projectSchema.pre('save', async function (next) {
   if (this.isNew) {

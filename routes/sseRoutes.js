@@ -26,11 +26,12 @@ router.get('/notification/:channel', async (req, res) => {
     }, HEARTBEAT_INTERVAL);
     
     
+    let unsubscribe = null;
     try {
-        console.log("trying my best")
-        await pubSubService.subscribe(fullChannel, (message) => {
+        // subscribe() returns a handle that removes only THIS client's listener,
+        // so one client disconnecting won't tear the channel down for others.
+        unsubscribe = await pubSubService.subscribe(fullChannel, (message) => {
             try {
-                console.log("got a message")
                 res.write(`data: ${JSON.stringify({ message: message })}\n\n`);
             } catch (error) {
                 logError(`Error sending SSE message: ${error}`);
@@ -40,14 +41,15 @@ router.get('/notification/:channel', async (req, res) => {
         logInfo(`Client subscribed to channel: ${channel}`);
     } catch (error) {
         logError(`Error in SSE connection: ${error}`);
-        res.end();
+        clearInterval(heartbeat);
+        return res.end();
     }
 
 
     req.on('close', async () => {
         try {
             clearInterval(heartbeat);
-            await pubSubService.unsubscribe(fullChannel);
+            if (unsubscribe) await unsubscribe();
             logInfo(`Client disconnected from channel: ${channel}`);
         } catch (error) {
             logError(`Error unsubscribing from channel: ${channel}`, error);

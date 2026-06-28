@@ -44,11 +44,16 @@ const userSchema = new mongoose.Schema({
 }
 );
 
+// Supports the prefix search in findUser (anchored, case-insensitive regex).
+userSchema.index({ name: 1 });
 
 
+// ### MIDDLEWARES
 userSchema.pre('save', async function (next) {
-  // hashes the password
-  this.password = await bcrypt.hash(this.password, 4);
+  // Only (re)hash when the password actually changed, so re-saving a user
+  // never double-hashes an already-hashed password.
+  if (!this.isModified('password')) return next();
+  this.password = await bcrypt.hash(this.password, 12);
   next();
 })
 userSchema.post('save', async function (doc, next) {
@@ -61,11 +66,12 @@ userSchema.post('save', async function (doc, next) {
 
 
 userSchema.pre('deleteOne', { document: true, query: false }, async function (next) {
-  // Remove associated projects, and let the cascading deletion handle the rest
+  // Remove associated projects, and let the cascading deletion handle the rest.
+  // Look projects up by owner_id (the schema has no `projects` array).
   const ProjectModel = require("./project");
-  for (let projectId of this.projects) {
-    const temp = await ProjectModel.findById(projectId);
-    await temp.deleteOne()
+  const projects = await ProjectModel.find({ owner_id: this._id });
+  for (const project of projects) {
+    await project.deleteOne();
   }
   next();
 });

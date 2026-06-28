@@ -6,10 +6,12 @@ const cookieParser = require('cookie-parser');
 const path = require("path");
 const https = require('https');
 const fs = require('fs');
-const session = require('express-session');
 require('dotenv').config();
 const { initiateServices } = require('./services/serviceManager');
 
+const { apiLoggerMiddleware } = require("./middleware/apiLogger.js");
+
+const rateLimiter = require("./middleware/rateLimiter.js");
 const authRoutes = require("./routes/auth.js");
 const userRoutes = require("./routes/user.js");
 const projectRoutes = require("./routes/project.js");
@@ -22,6 +24,7 @@ const sseRoutes = require("./routes/sseRoutes.js");
 // const { transpileManager } = require('./services/transpileManager.js');
 const { createFolder } = require('./utils/fileManager.js');
 const { logSystem } = require('./utils/logger.js');
+const { errorHandler } = require('./utils/errorUtils.js');
 // const { startDatabase } = require('./services/mongodb.js');
 // const { connectRedis } = require('./services/redis.js');
 
@@ -44,6 +47,8 @@ logSystem(`CWD: ${process.cwd()}`)
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(apiLoggerMiddleware);
+app.use(rateLimiter);
 app.use(cors({
   origin: [
     // Localhost
@@ -64,21 +69,13 @@ app.use(cors({
 }));
 
 
-// Session
-app.use(session({
-  secret: process.env.MODE == "dev" ? "session-key" : process.env.SESSION_KEY,
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: true, // Set to true in production if using HTTPS
-    maxAge: 1000 * 60 * 60 * 24, // Session lifetime (24 hours)
-    sameSite: "Strict",
-    httpOnly: true,
-  },
-}));
-
-
 // Routes
+// Default soft authorization
+app.use((req, res, next) => {
+  req.user = null;
+  next();
+});
+
 app.use("/auth", authRoutes);
 app.use("/user", userRoutes);
 app.use("/projects", projectRoutes);
@@ -110,12 +107,11 @@ app.use("/banner", (req, res, next) => {
 app.get("/test", (req, res) => {
   return res.status(200).json({ "msg": "hello" })
 })
-// app.use("/temp", (req, res, next) => {
-//   logSystem(`Request for temp: ${req.originalUrl}`);
-//   next();
-// }, express.static(path.join(process.cwd())));
 
+// Error handling middleware
+app.use(errorHandler);
 
+let httpsServer;
 if (process.env.MODE == "dev") {
   logSystem("Running in DEV mode");
   const options = {
@@ -123,7 +119,7 @@ if (process.env.MODE == "dev") {
     cert: fs.readFileSync(`./certificates/localhost.pem`)
   };
 
-  const httpsServer = https.createServer(options, app)
+  httpsServer = https.createServer(options, app)
   httpsServer.listen(process.env.PORT, () => {
     logSystem(`server running in DEV: ${Date.now()}`);
   })
@@ -136,7 +132,7 @@ else {
     cert: fs.readFileSync(`/etc/letsencrypt/live/${process.env.BACKEND_DOMAIN}/fullchain.pem`)
   };
 
-  const httpsServer = https.createServer(options, app)
+  httpsServer = https.createServer(options, app)
   httpsServer.listen(process.env.PORT, () => {
     logSystem(`server running in PROD: ${Date.now()}`);
   })

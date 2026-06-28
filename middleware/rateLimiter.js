@@ -1,35 +1,40 @@
-const redis = require('redis');
-const { promisify } = require('util');
+const { redisService } = require("../services/redis.js");
+const { logError } = require("../utils/logger.js");
 
-const redisClient = redis.createClient({
-    host: process.env.REDIS_HOST || 'localhost',
-    port: process.env.REDIS_PORT || 6379
-});
+const WINDOW_SECONDS = 60;
+const MAX_REQUESTS = 100;
 
-const incrAsync = promisify(redisClient.incr).bind(redisClient);
-const expireAsync = promisify(redisClient.expire).bind(redisClient);
-
+// Fixed-window rate limiter backed by the shared Redis client (node-redis v4/v5 API).
+// Fails open: if Redis is unavailable the request is allowed through.
 async function rateLimiter(req, res, next) {
-    const ip = req.ip;
-    const key = `ratelimit:${ip}`;
-    
+    let client;
     try {
-        const numRequests = await incrAsync(key);
-        
-        // First request, set expiry
+        client = redisService.getClient();
+    } catch (err) {
+        return next(); // Redis down -> don't block traffic
+    }
+
+    const ip = req.ip || req.connection?.remoteAddress || "unknown";
+    const key = `ratelimit:${ip}`;
+
+    try {
+        const numRequests = await client.incr(key);
+
+        // First request in the window -> set the expiry.
         if (numRequests === 1) {
-            await expireAsync(key, 60); // 1 minute window
+            await client.expire(key, WINDOW_SECONDS);
         }
-        
-        // Rate limit: 100 requests per minute
-        if (numRequests > 100) {
-            return res.status(429).json({ error: 'Too many requests, please try again later' });
+
+        if (numRequests > MAX_REQUESTS) {
+            const ttl = await client.ttl(key);
+            res.set("Retry-After", String(ttl > 0 ? ttl : WINDOW_SECONDS));
+            return res.status(429).json({ error: "Too many requests, please try again later" });
         }
-        
-        next();
+
+        return next();
     } catch (error) {
-        console.error('Rate limiting error:', error);
-        next(); // Continue if Redis fails
+        logError(`Rate limiting error: ${error.message}`);
+        return next(); // Fail open
     }
 }
 

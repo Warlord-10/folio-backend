@@ -24,6 +24,7 @@ const sseRoutes = require("./routes/sseRoutes.js");
 // const { transpileManager } = require('./services/transpileManager.js');
 const { createFolder } = require('./utils/fileManager.js');
 const { logSystem } = require('./utils/logger.js');
+const { errorHandler } = require('./utils/errorUtils.js');
 // const { startDatabase } = require('./services/mongodb.js');
 // const { connectRedis } = require('./services/redis.js');
 
@@ -106,11 +107,9 @@ app.use("/banner", (req, res, next) => {
 app.get("/test", (req, res) => {
   return res.status(200).json({ "msg": "hello" })
 })
-// app.use("/temp", (req, res, next) => {
-//   logSystem(`Request for temp: ${req.originalUrl}`);
-//   next();
-// }, express.static(path.join(process.cwd())));
 
+// Error handling middleware
+app.use(errorHandler);
 
 let httpsServer;
 if (process.env.MODE == "dev") {

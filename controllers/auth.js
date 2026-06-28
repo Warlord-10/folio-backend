@@ -4,114 +4,100 @@ const { logError, logInfo } = require("../utils/logger.js");
 const { setAuthCookies } = require("../utils/authUtils.js");
 const { resetCookieSetting } = require('../middleware/cookieConfig.js');
 const { verifyRefreshToken } = require('../utils/jwt.js');
+const { AppError } = require('../utils/appError.js');
+const { asyncHandler } = require("../utils/errorUtils.js");
 
-async function registerUser(req, res) {
-    try {
-        logInfo("registerUser");
+const registerUser = asyncHandler(async (req, res) => {
+    logInfo("registerUser");
 
-        const { email, password, name } = req.body;
+    const { email, password, name } = req.body;
 
-        // Validate request body
-        if (!email || !password || !name) {
-            return res.status(400).json({ error: "All fields are required" });
-        }
-
-        // Check if user already exists
-        const existingUser = await UserModel.findOne({ email });
-        if (existingUser) {
-            return res.status(409).json({ error: "Email already in use" });
-        }
-
-        // Create new user
-        const user = await UserModel.create({ email, name, password });
-
-        // Generate JWT tokens & set auth cookies
-        setAuthCookies(res, user.toJSON());
-
-        return res.status(201).json({
-            message: "User registered successfully",
-            user: user
-        });
-    } catch (error) {
-        logError(error);
-        return res.status(500).json({ error: "User creation failed" });
+    // Validate request body
+    if (!email || !password || !name) {
+        throw new AppError(400, "All fields are required");
     }
-}
 
-async function loginUser(req, res) {
-    try {
-        logInfo("loginUser");
-
-        const { email, password } = req.body;
-
-        if (!email || !password) {
-            return res.status(400).json({ error: "Email and password are required" });
-        }
-
-        // Check if user exists
-        const user = await UserModel.findOne({ email }, "+password");
-        if (!user) {
-            return res.status(404).json({ error: "User not found" });
-        }
-
-        // Verify password
-        const passwordMatch = await bcrypt.compare(password, user.password);
-        if (!passwordMatch) {
-            return res.status(401).json({ error: "Incorrect password" });
-        }
-
-        // Generate JWT tokens & set auth cookies
-        setAuthCookies(res, user.toJSON());
-
-        return res.status(200).json({
-            message: "Login successful",
-            user: user
-        });
-    } catch (error) {
-        logError(error);
-        return res.status(500).json({ error: "Login failed" });
+    // Check if user already exists
+    const existingUser = await UserModel.findOne({ email });
+    if (existingUser) {
+        throw new AppError(409, "Email already in use");
     }
-}
 
-async function logoutUser(req, res) {
-    try {
-        logInfo("logoutUser");
+    // Create new user
+    const user = await UserModel.create({ email, name, password });
 
-        res.cookie("accessToken", null, resetCookieSetting);
-        res.cookie("refreshToken", null, resetCookieSetting);
+    // Generate JWT tokens & set auth cookies
+    setAuthCookies(res, user.toJSON());
 
-        return res.status(200).json({ message: "Logout successful" });
-    } catch (error) {
-        logError(error);
-        return res.status(500).json({ error: "Logout error" });
+    return res.status(201).json({
+        message: "User registered successfully",
+        user: user
+    });
+});
+
+const loginUser = asyncHandler(async (req, res) => {
+    logInfo("loginUser");
+
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        throw new AppError(400, "Email and password are required");
     }
-}
 
-async function getNewAccessToken(req, res) {
+    // Check if user exists
+    const user = await UserModel.findOne({ email }, "+password");
+    if (!user) {
+        throw new AppError(404, "User not found");
+    }
+
+    // Verify password
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
+        throw new AppError(401, "Incorrect password");
+    }
+
+    // Generate JWT tokens & set auth cookies
+    setAuthCookies(res, user.toJSON());
+
+    return res.status(200).json({
+        message: "Login successful",
+        user: user
+    });
+});
+
+const logoutUser = asyncHandler(async (req, res) => {
+    logInfo("logoutUser");
+
+    res.cookie("accessToken", null, resetCookieSetting);
+    res.cookie("refreshToken", null, resetCookieSetting);
+
+    return res.status(200).json({ message: "Logout successful" });
+});
+
+const getNewAccessToken = asyncHandler(async (req, res) => {
+    logInfo("getNewAccessToken");
+
+    const { refreshToken } = req.cookies;
+    if (!refreshToken) {
+        throw new AppError(401, "Refresh token not found", "REFRESH_TOKEN_EXPIRED");
+    }
+
+    // verifyRefreshToken throws on an invalid/expired token. We clear the stale
+    // cookies before surfacing the error so the client isn't stuck with bad tokens.
+    let decoded;
     try {
-        logInfo("getNewAccessToken");
-
-        const { refreshToken } = req.cookies;
-        if (!refreshToken) {
-            return res.status(401).json({ error: "Refresh token not found", code: "REFRESH_TOKEN_EXPIRED" });
-        }
-
-        // Verify refresh token
-        const decoded = verifyRefreshToken(refreshToken);
-        if (!decoded) {
-            return res.status(401).json({ error: "Invalid refresh token", code: "REFRESH_TOKEN_EXPIRED" });
-        }
-
-        // Generate new JWT tokens & set auth cookies
-        setAuthCookies(res, decoded);
-
-        return res.status(200).json({ message: "Token refreshed successfully" });
-    } catch (error) {
+        decoded = verifyRefreshToken(refreshToken);
+    } catch (err) {
         res.clearCookie("accessToken");
         res.clearCookie("refreshToken");
-        return res.status(500).json({ error: "Refresh token error" });
+        throw new AppError(401, "Invalid refresh token", "REFRESH_TOKEN_EXPIRED");
     }
-}
+
+    // Generate new JWT tokens & set auth cookies
+    setAuthCookies(res, decoded);
+
+    return res.status(200).json({ message: "Token refreshed successfully" });
+});
 
 module.exports = {
     registerUser,

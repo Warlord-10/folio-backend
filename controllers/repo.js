@@ -1,7 +1,19 @@
 const { FileModel, FolderModel } = require("../models/repo");
 const fs = require('fs');
+const fsp = require('fs/promises');
 const path = require('path');
 const { logError, logInfo } = require("../utils/logger.js");
+const { cacheKeys, delCache } = require("../utils/cache.js");
+
+// Invalidates the cached language breakdown for the project a file/folder belongs to.
+// relPath is "<ownerId>/<projectTitle>/...".
+async function invalidateProjectLanguagesByRelPath(relPath) {
+    if (!relPath) return;
+    const parts = relPath.split(path.sep);
+    if (parts.length < 2) return;
+    const [ownerId, projectTitle] = parts;
+    await delCache(cacheKeys.projectLanguages(ownerId, projectTitle));
+}
 
 
 // gets all the files of a folder by Id
@@ -9,21 +21,16 @@ async function getFolder(req, res) {
     try {
         logInfo("getFolder");
 
-        const data = await FolderModel.findById(req.params.fid);
+        const data = await FolderModel.findById(req.params.fid).lean();
         if (!data) {
             return res.status(404).json('No Folder Found');
         }
 
-        const folder = await FolderModel.find({
-            parent_id: req.params.fid
-        })
-        const files = await FileModel.find({
-            parent_id: req.params.fid
-        })
-
-        if (!folder || !files) {
-            return res.status(404).json('No Folder Found');
-        }
+        // Independent queries — run them concurrently.
+        const [folder, files] = await Promise.all([
+            FolderModel.find({ parent_id: req.params.fid }).lean(),
+            FileModel.find({ parent_id: req.params.fid }).lean(),
+        ]);
 
         return res.status(200).json({
             data: data,
@@ -150,6 +157,8 @@ async function makeFile(req, res) {
             extension: path.extname(file_name).replace('.', '')
         });
 
+        await invalidateProjectLanguagesByRelPath(fileObj.relPath);
+
         return res.status(201).json(fileObj);
     } catch (error) {
         logError(error)
@@ -189,11 +198,12 @@ async function updateFile(req, res) {
         if (req.body.content) {
             const filePath = path.join(process.cwd(), process.env.PROJECT_FILE_DEST, file.relPath);
 
-            await fs.writeFile(filePath, req.body.content, (err) => {
-                if (err) {
-                    return res.status(500).json("Failed to update file content");
-                }
-            })
+            // Use the promise API so we actually wait for the write to finish and
+            // don't risk sending two responses on error.
+            await fsp.writeFile(filePath, req.body.content);
+
+            // Content changed -> the project's language breakdown may be stale.
+            await invalidateProjectLanguagesByRelPath(file.relPath);
 
             return res.status(200).json({
                 message: "File updated successfully",
@@ -223,6 +233,7 @@ async function removeFile(req, res) {
         }
 
         const ans = await file.deleteOne();
+        await invalidateProjectLanguagesByRelPath(file.relPath);
         return res.status(200).json(ans);
     } catch (error) {
         return res.status(500).json("Error occured in deleting the file");

@@ -1,10 +1,22 @@
-const path = require("path");
 const ProjectModel = require("../models/project");
-const UserModel = require("../models/user.js");
-const PortfolioModel = require("../models/portfolio.js")
 
 const { logError, logInfo } = require("../utils/logger.js");
 const { generatePermission } = require("../utils/permissionManager.js");
+const { cacheKeys, getCache, setCache, delCache } = require("../utils/cache.js");
+
+// Updatable project fields (prevents mass-assignment via req.body).
+const UPDATABLE_PROJECT_FIELDS = ["title", "description", "banner_path", "metadata"];
+
+// Invalidates every cache entry touched by a project mutation.
+async function invalidateProjectCaches(project) {
+    const ownerId = (project.owner_id?._id || project.owner_id)?.toString();
+    await delCache([
+        cacheKeys.project(project._id.toString()),
+        cacheKeys.userProjects(ownerId),
+        cacheKeys.projectByName(ownerId, project.title),
+        cacheKeys.projectLanguages(ownerId, project.title),
+    ]);
+}
 
 
 // Gets all the projects of a user
@@ -12,10 +24,13 @@ async function getUserProjects(req, res) {
     try {
         logInfo("getUserProjects")
         const UserId = req.user?._id || null;
+        const key = cacheKeys.userProjects(req.params.uid);
 
-        const data = await ProjectModel.find({ owner_id: req.params.uid });
+        // Cache the public project list; permission is layered per-request.
+        let data = await getCache(key);
         if (!data) {
-            return res.status(404).send('No Projects Found');
+            data = await ProjectModel.find({ owner_id: req.params.uid }).lean();
+            await setCache(key, data, 120); // 2 minutes
         }
 
         return res.status(200).json({
@@ -34,15 +49,21 @@ async function getProjectById(req, res) {
     try {
         logInfo("getProjectById");
         const UserId = req.user?._id || null;
+        const key = cacheKeys.project(req.params.pid);
 
-        const data = await ProjectModel.findById(req.params.pid).populate("owner_id");
+        let data = await getCache(key);
         if (!data) {
-            return res.status(404).json('Project Not Found');
+            data = await ProjectModel.findById(req.params.pid).populate("owner_id").lean();
+            if (!data) {
+                return res.status(404).json('Project Not Found');
+            }
+            await setCache(key, data, 120); // 2 minutes
         }
 
+        const ownerId = data.owner_id?._id || data.owner_id;
         return res.status(200).json({
             data: data,
-            permission: generatePermission(UserId, data.owner_id._id)
+            permission: generatePermission(UserId, ownerId)
         });
     } catch (error) {
         logError(error)
@@ -77,6 +98,9 @@ async function createProject(req, res) {
             description: description,
         });
 
+        // New project invalidates the owner's project list cache
+        await delCache(cacheKeys.userProjects(UserId.toString()));
+
         return res.status(201).json({
             data: project,
             permission: generatePermission(UserId, project.owner_id)
@@ -105,6 +129,8 @@ async function delProjectById(req, res) {
         }
 
         await projectData.deleteOne();
+        await invalidateProjectCaches(projectData);
+
         return res.status(200).json(projectData);
     } catch (error) {
         logError(error)
@@ -129,7 +155,16 @@ async function updateProjectById(req, res) {
             return res.status(403).json('Permission Denied')
         }
 
-        const result = await data.updateOne(req.body, { new: true })
+        // Whitelist updatable fields to prevent mass-assignment
+        const updates = {};
+        for (const field of UPDATABLE_PROJECT_FIELDS) {
+            if (req.body[field] !== undefined) updates[field] = req.body[field];
+        }
+
+        const result = await ProjectModel.findByIdAndUpdate(req.params.pid, updates, { new: true });
+        await invalidateProjectCaches(data); // old title/owner
+        await invalidateProjectCaches(result); // new title/owner
+
         return res.status(200).json(result);
     } catch (error) {
         logError(error)

@@ -11,6 +11,7 @@ const { initiateServices } = require('./services/serviceManager');
 
 const { apiLoggerMiddleware } = require("./middleware/apiLogger.js");
 
+const rateLimiter = require("./middleware/rateLimiter.js");
 const authRoutes = require("./routes/auth.js");
 const userRoutes = require("./routes/user.js");
 const projectRoutes = require("./routes/project.js");
@@ -46,6 +47,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(apiLoggerMiddleware);
+app.use(rateLimiter);
 app.use(cors({
   origin: [
     // Localhost
@@ -110,6 +112,7 @@ app.get("/test", (req, res) => {
 // }, express.static(path.join(process.cwd())));
 
 
+let httpsServer;
 if (process.env.MODE == "dev") {
   logSystem("Running in DEV mode");
   const options = {
@@ -117,7 +120,7 @@ if (process.env.MODE == "dev") {
     cert: fs.readFileSync(`./certificates/localhost.pem`)
   };
 
-  const httpsServer = https.createServer(options, app)
+  httpsServer = https.createServer(options, app)
   httpsServer.listen(process.env.PORT, () => {
     logSystem(`server running in DEV: ${Date.now()}`);
   })
@@ -130,7 +133,7 @@ else {
     cert: fs.readFileSync(`/etc/letsencrypt/live/${process.env.BACKEND_DOMAIN}/fullchain.pem`)
   };
 
-  const httpsServer = https.createServer(options, app)
+  httpsServer = https.createServer(options, app)
   httpsServer.listen(process.env.PORT, () => {
     logSystem(`server running in PROD: ${Date.now()}`);
   })

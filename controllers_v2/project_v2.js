@@ -4,6 +4,7 @@ const UserModel = require("../models/user.js");
 const linguist = require('linguist-js');
 const { logError, logInfo } = require("../utils/logger.js");
 const { generatePermission } = require("../utils/permissionManager.js");
+const { cacheKeys, getCache, setCache } = require("../utils/cache.js");
 
 const rabbitMQService = require("../services/rabbitmq.js");
 
@@ -12,24 +13,34 @@ async function getProjectByName(req, res) {
     try {
         logInfo("getProjectByName");
         const userId = req.user?._id || null;
+        const { uid, pname } = req.params;
 
-        const data = await ProjectModel.findOne({ owner_id: req.params.uid, title: req.params.pname }).populate("owner_id");
-
+        // Project document (cached, public)
+        let data = await getCache(cacheKeys.projectByName(uid, pname));
         if (!data) {
-            return res.status(404).json('No Project Found');
+            data = await ProjectModel.findOne({ owner_id: uid, title: pname }).populate("owner_id").lean();
+            if (!data) {
+                return res.status(404).json('No Project Found');
+            }
+            await setCache(cacheKeys.projectByName(uid, pname), data, 120);
         }
 
-        const { files, languages, unknown } = await linguist(
-            path.join(process.cwd(),
-                process.env.PROJECT_FILE_DEST,
-                data.owner_id._id.toHexString(),
-                data.title
-            ))
+        // Language breakdown is an expensive filesystem walk — cache it separately,
+        // invalidated whenever the project's files change.
+        let languages = await getCache(cacheKeys.projectLanguages(uid, pname));
+        if (!languages) {
+            const ownerId = (data.owner_id?._id || data.owner_id).toString();
+            const result = await linguist(
+                path.join(process.cwd(), process.env.PROJECT_FILE_DEST, ownerId, data.title)
+            );
+            languages = result.languages;
+            await setCache(cacheKeys.projectLanguages(uid, pname), languages, 600); // 10 minutes
+        }
 
         return res.status(200).json({
             data: data,
             metadata: languages,
-            permission: generatePermission(userId, req.params.uid)
+            permission: generatePermission(userId, uid)
         });
     } catch (error) {
         logError(error)

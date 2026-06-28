@@ -26,7 +26,7 @@ async function getFileDetails_v2(req, res) {
         const repoPath = req.params.repo_path ?? '';
 
         const full_path_of_file = path.join(req.params.uid, req.params.pname, repoPath)
-        const data = await FileModel.findOne({ relPath: full_path_of_file })
+        const data = await FileModel.findOne({ relPath: full_path_of_file }).lean()
 
         if (!data) return res.status(404).json("File not found")
 
@@ -34,7 +34,7 @@ async function getFileDetails_v2(req, res) {
 
         return res.status(200).json({
             data: data,
-            permission: generatePermission(req.user._id, req.params.uid)
+            permission: generatePermission(req.user?._id || null, req.params.uid)
         })
     } catch (error) {
         logError(error)
@@ -50,20 +50,21 @@ async function getFolder_v2(req, res) {
         const repoPath = req.params.repo_path ?? '';
 
         const pathToSearch = path.join(req.params.uid, req.params.pname, repoPath)
-        const currFolder = await FolderModel.findOne({ relPath: pathToSearch })
+        const currFolder = await FolderModel.findOne({ relPath: pathToSearch }).lean()
 
         if (!currFolder) return res.status(404).json("Folder not found")
 
-        const files = await FileModel.find({ parent_id: currFolder._id })
-        const folders = await FolderModel.find({ parent_id: currFolder._id })
-
-        if (!files || !folders) return res.status(404).json("No files or folders found")
+        // Independent queries — run them concurrently.
+        const [files, folders] = await Promise.all([
+            FileModel.find({ parent_id: currFolder._id }).lean(),
+            FolderModel.find({ parent_id: currFolder._id }).lean(),
+        ]);
 
         return res.status(200).json({
             data: currFolder,
             folders: folders,
             files: files,
-            permission: generatePermission(req.user._id, req.params.uid)
+            permission: generatePermission(req.user?._id || null, req.params.uid)
         })
     } catch (error) {
         logError(error)

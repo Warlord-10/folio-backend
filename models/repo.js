@@ -16,6 +16,10 @@ const fileSchema = new mongoose.Schema({
   size: { type: Number, default: 0 },
 }, { timestamps: true });
 
+// find({ parent_id }) -> list a folder's files; findOne({ relPath }) -> resolve a file by path
+fileSchema.index({ parent_id: 1 });
+fileSchema.index({ relPath: 1 });
+
 
 // ### MIDDLEWARES
 fileSchema.pre('save', async function (next) {
@@ -56,6 +60,10 @@ const folderSchema = new mongoose.Schema({
   relPath: { type: String, default: null },
   absPath: { type: String, default: null },
 }, { timestamps: true });
+
+// find({ parent_id }) -> list child folders; findOne({ relPath }) -> resolve a folder by path
+folderSchema.index({ parent_id: 1 });
+folderSchema.index({ relPath: 1 });
 
 
 // ### MIDDLEWARES

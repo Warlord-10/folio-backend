@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 require('dotenv').config();
 
 // Main functions
@@ -7,7 +8,7 @@ function generateRefreshToken(data) {
         return jwt.sign(
             { user: data },
             process.env.REFRESH_TOKEN,
-            { expiresIn: "1d" }
+            { expiresIn: "1d", jwtid: crypto.randomUUID() }
         );
     } catch (error) {
         throw new Error("Error occured in generating refresh token")

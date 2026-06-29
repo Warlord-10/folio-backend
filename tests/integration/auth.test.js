@@ -15,11 +15,15 @@ jest.mock("../../utils/fileManager.js", () => ({
 
 const request = require("supertest");
 const db = require("../setup/db");
+const { __clearStore } = require("../../services/redis.js");
 const app = require("../../app.js");
 const UserModel = require("../../models/user.js");
 
 beforeAll(() => db.connect());
-afterEach(() => db.clear());
+afterEach(async () => {
+    await db.clear();
+    __clearStore(); // wipe the mocked Redis session store between tests
+});
 afterAll(() => db.close());
 
 const validUser = { name: "Ada", email: "ada@example.com", password: "secret123" };
@@ -113,5 +117,51 @@ describe("POST /auth/refresh", () => {
         expect(res.status).toBe(200);
         expect(res.body.message).toBe("Token refreshed successfully");
         expect(getCookie(res, "accessToken")).toBeDefined();
+    });
+
+    it("rejects a refresh token whose session was never stored (signature valid, not on record)", async () => {
+        const reg = await request(app).post("/auth/register").send(validUser);
+        const refreshCookie = getCookie(reg, "refreshToken");
+
+        // Simulate the session being gone server-side (e.g. revoked / expired in Redis).
+        __clearStore();
+
+        const res = await request(app).post("/auth/refresh").set("Cookie", refreshCookie);
+        expect(res.status).toBe(401);
+        expect(res.body.code).toBe("REFRESH_TOKEN_EXPIRED");
+    });
+});
+
+describe("stateful session: logout revokes server-side", () => {
+    it("a refresh token can no longer be used after logout", async () => {
+        const reg = await request(app).post("/auth/register").send(validUser);
+        const refreshCookie = getCookie(reg, "refreshToken");
+
+        // Logout deletes the stored session.
+        const logout = await request(app).post("/auth/logout").set("Cookie", refreshCookie);
+        expect(logout.status).toBe(200);
+
+        // The (still cryptographically valid) refresh token is now useless.
+        const res = await request(app).post("/auth/refresh").set("Cookie", refreshCookie);
+        expect(res.status).toBe(401);
+        expect(res.body.code).toBe("REFRESH_TOKEN_EXPIRED");
+    });
+});
+
+describe("stateful session: rotation + reuse detection", () => {
+    it("rotates the refresh token and invalidates the old one on reuse", async () => {
+        const reg = await request(app).post("/auth/register").send(validUser);
+        const oldRefresh = getCookie(reg, "refreshToken");
+
+        // First refresh succeeds and rotates to a new refresh token.
+        const first = await request(app).post("/auth/refresh").set("Cookie", oldRefresh);
+        expect(first.status).toBe(200);
+        const newRefresh = getCookie(first, "refreshToken");
+        expect(newRefresh).toBeDefined();
+
+        // Replaying the OLD refresh token is now rejected (reuse detected).
+        const replay = await request(app).post("/auth/refresh").set("Cookie", oldRefresh);
+        expect(replay.status).toBe(401);
+        expect(replay.body.code).toBe("REFRESH_TOKEN_EXPIRED");
     });
 });

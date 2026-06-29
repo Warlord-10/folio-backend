@@ -1,16 +1,34 @@
 // Manual mock for services/redis.js (activated by jest.mock("../../services/redis.js")).
-// Returns a fake client whose reads always miss — so caching becomes a transparent
-// pass-through to Mongo and the rate limiter sees a low count and lets requests through.
+// Backs get/set/del with an in-memory Map so stateful flows (e.g. the refresh-token
+// session store) round-trip correctly. incr is a constant 1 so the rate limiter
+// never trips during tests.
+
+const store = new Map();
+
+// Minimal glob -> RegExp (only "*" is supported, which is all our patterns use).
+function globToRegExp(pattern) {
+    const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
+    return new RegExp(`^${escaped}$`);
+}
 
 const fakeClient = {
-    get: jest.fn().mockResolvedValue(null),     // always a cache miss
-    set: jest.fn().mockResolvedValue("OK"),
-    del: jest.fn().mockResolvedValue(0),
-    incr: jest.fn().mockResolvedValue(1),       // rate limiter: first request in window
-    expire: jest.fn().mockResolvedValue(true),
-    ttl: jest.fn().mockResolvedValue(60),
-    ping: jest.fn().mockResolvedValue("PONG"),
-    scanIterator: jest.fn(() => (async function* () {})()),
+    get: jest.fn(async (key) => (store.has(key) ? store.get(key) : null)),
+    set: jest.fn(async (key, value) => { store.set(key, value); return "OK"; }),
+    del: jest.fn(async (keys) => {
+        const list = Array.isArray(keys) ? keys : [keys];
+        let n = 0;
+        for (const k of list) if (store.delete(k)) n++;
+        return n;
+    }),
+    incr: jest.fn(async () => 1),        // rate limiter: always "first request in window"
+    expire: jest.fn(async () => true),
+    ttl: jest.fn(async () => 60),
+    ping: jest.fn(async () => "PONG"),
+    scanIterator: jest.fn(({ MATCH } = {}) => {
+        const re = MATCH ? globToRegExp(MATCH) : /.*/;
+        const keys = [...store.keys()].filter((k) => re.test(k));
+        return (async function* () { for (const k of keys) yield k; })();
+    }),
     isOpen: true,
 };
 
@@ -30,4 +48,9 @@ const redisService = {
     disconnectClient: jest.fn().mockResolvedValue(undefined),
 };
 
-module.exports = { redisService };
+// Test helper: wipe the in-memory store between tests.
+function __clearStore() {
+    store.clear();
+}
+
+module.exports = { redisService, __clearStore };

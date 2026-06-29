@@ -4,6 +4,7 @@ const { logError, logInfo } = require("./logger.js");
 // Centralized cache key builders so invalidation stays consistent across controllers.
 const cacheKeys = {
     user: (uid) => `user:${uid}`,
+    userSession: (uid) => `user:session:${uid}`,
     userProjects: (uid) => `projects:user:${uid}`,
     project: (pid) => `project:${pid}`,
     projectByName: (uid, pname) => `project:${uid}:${pname}`,

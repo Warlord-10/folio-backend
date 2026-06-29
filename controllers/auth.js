@@ -1,11 +1,15 @@
 const bcrypt = require('bcrypt');
 const UserModel = require("../models/user");
 const { logError, logInfo } = require("../utils/logger.js");
-const { setAuthCookies } = require("../utils/authUtils.js");
+const { setAuthCookies, clearAuthCookies } = require("../utils/authUtils.js");
 const { resetCookieSetting } = require('../middleware/cookieConfig.js');
 const { verifyRefreshToken } = require('../utils/jwt.js');
 const { AppError } = require('../utils/appError.js');
 const { asyncHandler } = require("../utils/errorUtils.js");
+const { getCache, setCache, delCache, cacheKeys } = require('../utils/cache.js');
+
+
+const REFRESH_TOKEN_TTL = 24 * 60 * 60;
 
 const registerUser = asyncHandler(async (req, res) => {
     logInfo("registerUser");
@@ -26,14 +30,17 @@ const registerUser = asyncHandler(async (req, res) => {
     // Create new user
     const user = await UserModel.create({ email, name, password });
 
-    // Generate JWT tokens & set auth cookies
-    setAuthCookies(res, user.toJSON());
+    // Issue tokens and record the refresh token server-side (the source of truth
+    // for whether this session is still valid).
+    const { refreshToken } = setAuthCookies(res, user.toJSON());
+    await setCache(cacheKeys.userSession(user._id), refreshToken, REFRESH_TOKEN_TTL);
 
     return res.status(201).json({
         message: "User registered successfully",
         user: user
     });
 });
+
 
 const loginUser = asyncHandler(async (req, res) => {
     logInfo("loginUser");
@@ -56,8 +63,10 @@ const loginUser = asyncHandler(async (req, res) => {
         throw new AppError(401, "Incorrect password");
     }
 
-    // Generate JWT tokens & set auth cookies
-    setAuthCookies(res, user.toJSON());
+    // Issue tokens and record the refresh token server-side. A fresh login
+    // replaces any existing session for this user (single active session).
+    const { refreshToken } = setAuthCookies(res, user.toJSON());
+    await setCache(cacheKeys.userSession(user._id), refreshToken, REFRESH_TOKEN_TTL);
 
     return res.status(200).json({
         message: "Login successful",
@@ -65,14 +74,25 @@ const loginUser = asyncHandler(async (req, res) => {
     });
 });
 
+
 const logoutUser = asyncHandler(async (req, res) => {
     logInfo("logoutUser");
 
-    res.cookie("accessToken", null, resetCookieSetting);
-    res.cookie("refreshToken", null, resetCookieSetting);
+    // Logout has no auth middleware and the access token may already be expired,
+    // so derive the user from the refresh cookie rather than req.user.
+    const { refreshToken } = req.cookies;
+    clearAuthCookies(res);
+
+    if (refreshToken) {
+        try {
+            const user = verifyRefreshToken(refreshToken);
+            await delCache(cacheKeys.userSession(user._id));
+        } catch { }
+    }
 
     return res.status(200).json({ message: "Logout successful" });
 });
+
 
 const getNewAccessToken = asyncHandler(async (req, res) => {
     logInfo("getNewAccessToken");
@@ -82,19 +102,25 @@ const getNewAccessToken = asyncHandler(async (req, res) => {
         throw new AppError(401, "Refresh token not found", "REFRESH_TOKEN_EXPIRED");
     }
 
-    // verifyRefreshToken throws on an invalid/expired token. We clear the stale
-    // cookies before surfacing the error so the client isn't stuck with bad tokens.
-    let decoded;
+    let user;
     try {
-        decoded = verifyRefreshToken(refreshToken);
-    } catch (err) {
-        res.clearCookie("accessToken");
-        res.clearCookie("refreshToken");
+        user = verifyRefreshToken(refreshToken);
+    } catch {
+        clearAuthCookies(res);
         throw new AppError(401, "Invalid refresh token", "REFRESH_TOKEN_EXPIRED");
     }
 
-    // Generate new JWT tokens & set auth cookies
-    setAuthCookies(res, decoded);
+    const sessionKey = cacheKeys.userSession(user._id);
+    const storedToken = await getCache(sessionKey);
+
+    if (!storedToken || storedToken !== refreshToken) {
+        await delCache(sessionKey);
+        clearAuthCookies(res);
+        throw new AppError(401, "Session expired or revoked", "REFRESH_TOKEN_EXPIRED");
+    }
+
+    const { refreshToken: newRefreshToken } = setAuthCookies(res, user);
+    await setCache(sessionKey, newRefreshToken, REFRESH_TOKEN_TTL);
 
     return res.status(200).json({ message: "Token refreshed successfully" });
 });
